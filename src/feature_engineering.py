@@ -1,7 +1,95 @@
 from keras_facenet import FaceNet
+import cv2
+import numpy as np
+import os   
 
-embedder = FaceNet()
+class FaceEmbedding:
+    """
+    Class to handle face detection, cropping, and embedding extraction.
+    This class uses Haar Cascade classifier for face detection and FaceNet for embedding extraction.
+    """
+    def __init__(self, vector_db_path, images_path, model_path=None):
+        self.model_path = model_path
+        self.embedder = FaceNet(model_path) if model_path else FaceNet()
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        # Sử dụng path tương đối đúng cách
+        self.images_path = os.path.abspath(images_path)
+        self.vector_db_path = os.path.abspath(vector_db_path)
 
-def extract_embedding(face_img):
-    # face_img: 160x160x3, RGB
-    return embedder.embeddings([face_img])[0]  # return vector 512-D
+        if not os.path.exists(self.vector_db_path):
+            os.makedirs(self.vector_db_path)
+
+    def detect_face(self, img):
+        """Detects faces in an image using Haar Cascade classifier.
+        This function takes an image as input and returns the coordinates of detected faces.
+        Args:
+            img (_type_): Ảnh chứa khuôn mặt cần phát hiện.
+        Returns:
+            List: Chứa các tọa độ của khuôn mặt được phát hiện trong định dạng (x, y, w, h).
+        """
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+        return faces  # List of (x, y, w, h)
+
+    def crop_and_preprocess_face(self, img, face):
+        """_summary_
+        Args:
+            img (.jpeg): Ảnh gốc ban đầu.
+            face (List): Tọa độ khuôn mặt GẦN NHẤT được phát hiện trong định dạng (x, y, w, h).
+        Returns:
+            img (.jpeg): Ảnh khuôn mặt đã được cắt và tiền xử lý.
+        """
+        x, y, w, h = face
+        face_img = img[y:y+h, x:x+w]
+        face_img = cv2.resize(face_img, (160, 160))  # chuẩn cho model như FaceNet
+        face_img = face_img.astype('float32') / 255.0  # normalize
+        return face_img
+
+    def extract_embedding(self, face_img):
+        # face_img: 160x160x3, RGB
+        return self.embedder.embeddings([face_img])[0]  # return vector 512-D
+    
+    def embedding_face(self, img):
+        """
+        Trích xuất embedding cho 1 ảnh đầu vào.
+        Args:
+            img (_type_): Ảnh đầu vào.
+        Returns:
+            _type_: embedding vector 512-D
+        """
+        faces = self.detect_face(img)
+        if len(faces) == 0:
+            return None
+        # Lấy khuôn mặt có diện tích lớn nhất
+        face = max(faces, key=lambda rect: rect[2] * rect[3])
+        face_img = self.crop_and_preprocess_face(img, face)
+        embedding = self.extract_embedding(face_img)
+        return embedding
+    
+    def embedding_train_data(self):
+        """
+        Trích xuất embedding cho tất cả ảnh sinh viên trong thư mục self.images_path.
+        Mỗi thư mục con là mã sinh viên, trong đó chứa các ảnh.
+        Embedding của mỗi sinh viên sẽ được lưu vào 1 file .npy trong self.vector_db_path
+        """
+        for student_id in os.listdir(self.images_path):
+            student_folder = os.path.join(self.images_path, student_id)
+            if not os.path.isdir(student_folder):
+                continue
+
+            embeddings = []
+            for img_name in os.listdir(student_folder):
+                img_path = os.path.join(student_folder, img_name)
+                img = cv2.imread(img_path)
+                if img is None:
+                    continue
+
+                embedding = self.embedding_face(img)
+                if embedding is not None:
+                    embeddings.append(embedding)
+
+            if embeddings:
+                embeddings_np = np.array(embeddings)
+                np.save(os.path.join(self.vector_db_path, f"{student_id}.npy"), embeddings_np)
+                print(f"[INFO] Saved {len(embeddings)} embeddings for student {student_id}.")

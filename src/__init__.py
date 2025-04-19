@@ -1,6 +1,7 @@
 # Define the __all__ variable
-__all__ = ["preprocessing", "feature_engineering"]
+__all__ = ["utils", "feature_engineering","preprocessing"]
 
 # Import the submodules
-from . import preprocessing
+from . import utils
 from . import feature_engineering
+from . import preprocessing

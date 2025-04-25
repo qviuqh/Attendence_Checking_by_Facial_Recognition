@@ -43,7 +43,6 @@ class FaceEmbedding:
         x, y, w, h = face
         face_img = img[y:y+h, x:x+w]
         face_img = cv2.resize(face_img, (160, 160))  # chuẩn cho model như FaceNet
-        face_img = face_img.astype('float32') / 255.0  # normalize
         return face_img
 
     def extract_embedding(self, face_img):
@@ -64,6 +63,8 @@ class FaceEmbedding:
         # Lấy khuôn mặt có diện tích lớn nhất
         face = max(faces, key=lambda rect: rect[2] * rect[3])
         face_img = self.crop_and_preprocess_face(img, face)
+        face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+        # face_img = face_img.astype('float32')
         embedding = self.extract_embedding(face_img)
         return embedding
     

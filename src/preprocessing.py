@@ -1,14 +1,13 @@
 import cv2
 import os
 import glob
+import pandas as pd
+from src import feature_engineering as fe
 
 class Processing_Img():
-    def __init__(self, video_dir, output_dir, fps=30, duration=15):
+    def __init__(self, video_dir, student):
         self.video_dir = video_dir
-        self.output_dir = output_dir
-        self.fps = fps
-        self.duration = duration
-        self.total_frames = fps * duration  # Tổng số khung hình cần trích xuất
+        self.student = student
     
     # Hàm xoay khung hình để đảm bảo định dạng dọc
     def rotate_to_portrait(self, frame):
@@ -27,16 +26,14 @@ class Processing_Img():
             frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         return frame
 
-    def video_to_frames(self):
+    def frame_to_vector(self, interval=5):
         """
-        _Thiết lập hàm xoay khung hình để đảm bảo định dạng dọc
-        Args:
         Đọc tất cả các tệp video trong thư mục video_dir và trích xuất khung hình và xử lý nó từ mỗi video.
-        Returns: None (Không trả về giá trị nào)
+        Embedding các frame đã xử lý đó thành các vector d-512
+        Args:
+        Returns: DataFrame chứa các vector d-512 và student_id cho mỗi khung hình đã xử lý.
         """
-        # Tạo thư mục đầu ra chính nếu chưa tồn tại
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
+        embedder = fe.FaceEmbedding()
 
         # Lấy danh sách tất cả tệp MP4 trong thư mục video
         video_files = glob.glob(os.path.join(self.video_dir, "*.mov"))
@@ -44,16 +41,17 @@ class Processing_Img():
         if not video_files:
             print("Không tìm thấy tệp MOV nào trong thư mục:", self.video_dir)
             exit()
-
+        
+        df = pd.DataFrame(columns=range(513))  # Tạo DataFrame rỗng với 513 cột (512 cho embedding + 1 cho student_id)
+        index = 0
+        
         # Lặp qua từng tệp video
         for video_file in video_files:
             # Lấy tên tệp (mã sinh viên) từ đường dẫn, bỏ phần mở rộng .mp4
             student_id = os.path.splitext(os.path.basename(video_file))[0]
             
-            # Tạo thư mục con cho mã sinh viên
-            student_output_dir = os.path.join(self.output_dir, student_id)
-            if not os.path.exists(student_output_dir):
-                os.makedirs(student_output_dir)
+            if student_id in self.student:
+                continue  # Bỏ qua video nếu student_id đã có trong danh sách student
             
             # Tạo đối tượng VideoCapture để đọc video
             cap = cv2.VideoCapture(video_file)
@@ -68,26 +66,35 @@ class Processing_Img():
             print(f"Đang xử lý video {video_file} (FPS gốc: {actual_fps})")
             
             # Khởi tạo biến đếm cho khung hình
-            counter = 1
+            counter = 0
+            frame_count = 0
             
             # Duyệt qua các khung hình
-            while counter <= self.total_frames:
+            while True:
                 ret, frame = cap.read()
                 if not ret:
                     print(f"Hết video hoặc lỗi khi đọc khung hình tại {video_file}")
                     break
                 
-                # Xoay khung hình để đảm bảo định dạng dọc
-                frame = self.rotate_to_portrait(frame)
-                frame_name = f"frame_{counter}.jpg"
-                frame_path = os.path.join(student_output_dir, frame_name)
-                # Lưu khung hình dưới dạng ảnh JPEG
-                cv2.imwrite(frame_path, frame)
-                counter += 1
+                if frame_count % interval == 0:
+                    # Trích xuất khung hình tại khoảng thời gian nhất định
+                    # Xoay khung hình để đảm bảo định dạng dọc
+                    frame = self.rotate_to_portrait(frame)
+                    embedding = embedder.embedding_face(frame)  # Trích xuất embedding cho khuôn mặt
+                    if embedding is None:
+                        frame_count += 1
+                        continue
+                    embedding = pd.Series(embedding)
+                    embedding = pd.concat([embedding, pd.Series([student_id])], ignore_index=True)
+                    df.loc[index] = embedding
+                    index += 1
+                    counter += 1
+                frame_count += 1
             
             # Giải phóng đối tượng VideoCapture
             cap.release()
-            
             # In thông báo kết quả cho video hiện tại
-            print(f"Đã trích xuất {counter} khung hình từ {video_file}, lưu tại {student_output_dir}")
+            print(f"Đã trích xuất {counter} khung hình từ video cuar sinh viên {student_id}")
+            self.student[student_id] = counter  # Thêm student_id vào danh sách đã xử lý
         print("Hoàn tất xử lý tất cả video.")
+        return df

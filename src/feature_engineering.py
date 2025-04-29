@@ -1,24 +1,23 @@
 from keras_facenet import FaceNet
 import cv2
 import numpy as np
-import os   
+import os
 
 class FaceEmbedding:
     """
     Class to handle face detection, cropping, and embedding extraction.
     This class uses Haar Cascade classifier for face detection and FaceNet for embedding extraction.
     """
-    def __init__(self, vector_db_path, images_path, model_path=None):
+    def __init__(self, model_path=None):
+        '''
+        Khởi tạo model dectect face và embedding face.
+        Args:
+            model_path (str): Đường dẫn đến mô hình FaceNet đã được huấn luyện trước.
+            Nếu không có, sẽ sử dụng mô hình mặc định.
+        '''
         self.model_path = model_path
         self.embedder = FaceNet(model_path) if model_path else FaceNet()
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        
-        # Sử dụng path tương đối đúng cách
-        self.images_path = os.path.abspath(images_path)
-        self.vector_db_path = os.path.abspath(vector_db_path)
-
-        if not os.path.exists(self.vector_db_path):
-            os.makedirs(self.vector_db_path)
 
     def detect_face(self, img):
         """Detects faces in an image using Haar Cascade classifier.
@@ -68,29 +67,29 @@ class FaceEmbedding:
         embedding = self.extract_embedding(face_img)
         return embedding
     
-    def embedding_train_data(self):
-        """
-        Trích xuất embedding cho tất cả ảnh sinh viên trong thư mục self.images_path.
-        Mỗi thư mục con là mã sinh viên, trong đó chứa các ảnh.
-        Embedding của mỗi sinh viên sẽ được lưu vào 1 file .npy trong self.vector_db_path
-        """
-        for student_id in os.listdir(self.images_path):
-            student_folder = os.path.join(self.images_path, student_id)
-            if not os.path.isdir(student_folder):
-                continue
+    # def embedding_train_data(self):
+    #     """
+    #     Trích xuất embedding cho tất cả ảnh sinh viên trong thư mục self.images_path.
+    #     Mỗi thư mục con là mã sinh viên, trong đó chứa các ảnh.
+    #     Embedding của mỗi sinh viên sẽ được lưu vào 1 file .npy trong self.vector_db_path
+    #     """
+    #     for student_id in os.listdir(self.images_path):
+    #         student_folder = os.path.join(self.images_path, student_id)
+    #         if not os.path.isdir(student_folder):
+    #             continue
 
-            embeddings = []
-            for img_name in os.listdir(student_folder):
-                img_path = os.path.join(student_folder, img_name)
-                img = cv2.imread(img_path)
-                if img is None:
-                    continue
+    #         embeddings = []
+    #         for img_name in os.listdir(student_folder):
+    #             img_path = os.path.join(student_folder, img_name)
+    #             img = cv2.imread(img_path)
+    #             if img is None:
+    #                 continue
 
-                embedding = self.embedding_face(img)
-                if embedding is not None:
-                    embeddings.append(embedding)
+    #             embedding = self.embedding_face(img)
+    #             if embedding is not None:
+    #                 embeddings.append(embedding)
 
-            if embeddings:
-                embeddings_np = np.array(embeddings)
-                np.save(os.path.join(self.vector_db_path, f"{student_id}.npy"), embeddings_np)
-                print(f"[INFO] Saved {len(embeddings)} embeddings for student {student_id}.")
+    #         if embeddings:
+    #             embeddings_np = np.array(embeddings)
+    #             np.save(os.path.join(self.vector_db_path, f"{student_id}.npy"), embeddings_np)
+    #             print(f"[INFO] Saved {len(embeddings)} embeddings for student {student_id}.")

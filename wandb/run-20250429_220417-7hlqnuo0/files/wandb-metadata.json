@@ -1,0 +1,16 @@
+{
+  "os": "Windows-10-10.0.26100-SP0",
+  "python": "CPython 3.10.16",
+  "startedAt": "2025-04-29T15:04:17.904277Z",
+  "program": "d:\\Documents\\Text Book\\3\\ML Ops\\Final Project\\Attendence_Checking_by_Facial_Recognition\\3. Training_model.ipynb",
+  "codePath": "3. Training_model.ipynb",
+  "git": {
+    "remote": "https://github.com/qviuqh/Attendence_Checking_by_Facial_Recognition.git",
+    "commit": "84e2a6194d58c93f72b391a53b5a9241eee3a890"
+  },
+  "email": "thanvinh164@gmail.com",
+  "root": "d:\\Documents\\Text Book\\3\\ML Ops\\Final Project\\Attendence_Checking_by_Facial_Recognition",
+  "host": "LAPTOP-9L2S1347",
+  "executable": "c:\\Users\\pv\\anaconda3\\envs\\face_env\\python.exe",
+  "codePathLocal": "3. Training_model.ipynb"
+}

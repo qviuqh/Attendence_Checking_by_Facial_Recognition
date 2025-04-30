@@ -1,0 +1,16 @@
+{
+  "os": "Windows-10-10.0.26100-SP0",
+  "python": "CPython 3.10.16",
+  "startedAt": "2025-04-30T02:53:36.530573Z",
+  "program": "d:\\Documents\\Text Book\\3\\ML Ops\\Final Project\\Attendence_Checking_by_Facial_Recognition\\api\\main.py",
+  "codePath": "api\\main.py",
+  "git": {
+    "remote": "https://github.com/qviuqh/Attendence_Checking_by_Facial_Recognition.git",
+    "commit": "8ed8e625aa1ebaf9f0f01de067296ead449231ba"
+  },
+  "email": "thanvinh164@gmail.com",
+  "root": "D:\\Documents\\Text Book\\3\\ML Ops\\Final Project\\Attendence_Checking_by_Facial_Recognition",
+  "host": "LAPTOP-9L2S1347",
+  "executable": "C:\\Users\\pv\\anaconda3\\envs\\face_env\\python.exe",
+  "codePathLocal": "api\\main.py"
+}

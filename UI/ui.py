@@ -3,7 +3,7 @@ import cv2
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
     QHBoxLayout, QProgressBar, QMessageBox, QSizePolicy,
-    QSplitter, QListWidget, QListWidgetItem
+    QSplitter, QListWidget, QListWidgetItem, QDialog
 )
 from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer
@@ -62,74 +62,158 @@ class FaceAttendanceUI(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Face Recognition Attendance System")
-        self.setMinimumSize(800, 800)
+        self.setMinimumSize(800, 800) 
 
-        self.main_layout = QHBoxLayout(self)
+        # Main layout
+        self.main_layout = QHBoxLayout()
         self.main_layout.setSpacing(20)
-        self.main_layout.setContentsMargins(20,20,20,20)
-
-        # Splitter
-        self.splitter = QSplitter(Qt.Horizontal)
-        left_widget = QWidget()
-        right_widget = QWidget()
-        self.left_layout = QVBoxLayout(left_widget)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Left side (camera) layout
+        self.left_layout = QVBoxLayout()
         self.left_layout.setAlignment(Qt.AlignCenter)
         self.left_layout.setSpacing(20)
-        self.right_layout = QVBoxLayout(right_widget)
+        
+        # Right side (attendance list) layout
+        self.right_layout = QVBoxLayout()
         self.right_layout.setAlignment(Qt.AlignTop)
         self.right_layout.setSpacing(10)
-        right_widget.setVisible(False)
-        self.right_widget = right_widget
-
-        self.splitter.addWidget(left_widget)
-        self.splitter.addWidget(right_widget)
-        self.splitter.setSizes([600,400])
-
+        
+        # Create a splitter widget to allow resizing between camera and list
+        self.splitter = QSplitter(Qt.Horizontal)
+        
+        # Left side widget
+        self.left_widget = QWidget()
+        self.left_widget.setLayout(self.left_layout)
+        
+        # Right side widget
+        self.right_widget = QWidget()
+        self.right_widget.setLayout(self.right_layout)
+        self.right_widget.setVisible(False)  # Initially hidden
+        
+        # Add widgets to splitter
+        self.splitter.addWidget(self.left_widget)
+        self.splitter.addWidget(self.right_widget)
+        self.splitter.setSizes([600, 400])  # Initial sizes
+        
+        # Add splitter to main layout
         self.main_layout.addWidget(self.splitter)
 
-        # Left side UI
+        # Title label
         self.title_label = QLabel("Face Recognition Attendance System")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setWordWrap(True)
+        self.title_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.title_label.setWordWrap(True)  # Allow word wrapping for title
         self.title_label.setStyleSheet("color: #007BFF; font-weight: bold;")
         self.left_layout.addWidget(self.title_label)
 
-        self.image_label = QLabel()
+        # Camera preview area with border
+        self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.image_label.setMinimumSize(300, 300)
         self.image_label.setStyleSheet("border: 2px solid #6C757D; border-radius: 8px; padding: 5px; background-color: white;")
         self.left_layout.addWidget(self.image_label, stretch=1)
 
-        self.status_label = QLabel(f"0 / {self.attendance.total_students} students present")
+        # Status label with styled appearance
+        self.status_label = QLabel("0 / 42 students present")
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: #6C757D; font-weight: bold;	padding: 8px; margin: 5px 0;")
+        self.status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+        # Enable text elision (truncation with ellipsis)
+        self.status_label.setTextFormat(Qt.PlainText)
         self.left_layout.addWidget(self.status_label)
 
-        self.progress_bar = QProgressBar()
+        # Progress bar with themed colors
+        self.progress_bar = QProgressBar(self)
         self.progress_bar.setVisible(False)
+        self.progress_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #6C757D;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #E9ECEF;
+                height: 20px;
+            }
+            QProgressBar::chunk {
+                background-color: #007BFF;
+                border-radius: 5px;
+            }
+        """)
         self.left_layout.addWidget(self.progress_bar)
 
-        # Buttons
+        # Buttons layout
+        self.button_layout = QHBoxLayout()
+        self.button_layout.setSpacing(15)
+
+        # Create all buttons with themed styles
         self.take_attendance_btn = QPushButton("Take Attendance")
         self.register_face_btn = QPushButton("Register New Face")
         self.confirm_face_btn = QPushButton("Confirm Face")
         self.retry_face_btn = QPushButton("Retry Wrong Face")
+        
+        # New button to toggle attendance list
         self.show_attendance_list_btn = QPushButton("Show Attendance List")
+        # Special styling for show attendance button
+        self.show_attendance_list_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6C757D;
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                border: none;
+                min-height: 40px;
+            }
+            QPushButton:hover {
+                background-color: #5A6268;
+            }
+        """)
+
+        # Special styling for confirmation button
+        self.confirm_face_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28A745;
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                border: none;
+                min-height: 40px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+
+        # Configure buttons
+        buttons = [
+            self.take_attendance_btn,
+            self.register_face_btn,
+            self.confirm_face_btn,
+            self.retry_face_btn
+        ]
+        
+        for btn in buttons:
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            btn.setMinimumHeight(40)
+            self.button_layout.addWidget(btn)
+
+        # Initially hide some buttons
         self.confirm_face_btn.setVisible(False)
         self.retry_face_btn.setVisible(False)
 
-        btn_layout = QHBoxLayout()
-        for btn in [self.take_attendance_btn, self.register_face_btn, self.confirm_face_btn, self.retry_face_btn]:
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            btn_layout.addWidget(btn)
-        self.left_layout.addLayout(btn_layout)
-
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(self.show_attendance_list_btn)
-        self.left_layout.addLayout(bottom_layout)
-
-        # Setup attendance list
+        self.left_layout.addLayout(self.button_layout)
+        
+        # Add the show attendance list button in a separate layout at the bottom
+        self.show_list_layout = QHBoxLayout()
+        self.show_list_layout.addWidget(self.show_attendance_list_btn)
+        self.left_layout.addLayout(self.show_list_layout)
+        
+        # Setup the attendance list on the right side
         self.setup_attendance_list()
+        
+        self.setLayout(self.main_layout)
 
         # Connect signals
         self.take_attendance_btn.clicked.connect(self.take_attendance)
@@ -138,7 +222,10 @@ class FaceAttendanceUI(QWidget):
         self.retry_face_btn.clicked.connect(self.retry_wrong_face)
         self.show_attendance_list_btn.clicked.connect(self.toggle_attendance_list)
 
+        # Set initial font sizes
         self.update_font_sizes()
+        
+        # Initially update the attendance list
         self.update_attendance_list()
 
     def setup_attendance_list(self):
@@ -221,19 +308,60 @@ class FaceAttendanceUI(QWidget):
     def update_frame(self):
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
-            if not ret: return
-            frame, cnt = self.detect_and_draw_faces(frame)
-            # Status updates omitted for brevity
-            size = min(self.image_label.width(), self.image_label.height())
-            h, w = frame.shape[:2]
-            c = min(h, w)
-            cx, cy = w//2, h//2
-            x1, y1 = max(0, cx-c//2), max(0, cy-c//2)
-            crop = frame[y1:y1+c, x1:x1+c]
-            img = cv2.resize(crop, (size, size))
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            qt = QImage(rgb.data, rgb.shape[1], rgb.shape[0], rgb.strides[0], QImage.Format_RGB888)
-            self.image_label.setPixmap(QPixmap.fromImage(qt))
+            if ret:
+                # Detect faces and draw squares
+                frame, face_count = self.detect_and_draw_faces(frame)
+                if self.confirm_face_btn.isVisible() or self.progress_bar.isVisible():
+                    if face_count == 0:
+                        current_text = "No face detected. Please position your face in the camera."
+                        self.status_label.setText(self.format_status_text(current_text))
+                        self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
+                    elif face_count > 1:
+                        current_text = f"{face_count} faces detected. Please ensure only one face is visible."
+                        self.status_label.setText(self.format_status_text(current_text))
+                        self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
+                    elif face_count == 1 and "No face detected" in self.status_label.text():
+                        student = self.attendance.student_data.get(self.attendance.current_student)
+                        if student and self.confirm_face_btn.isVisible():
+                            current_text = (
+                                f"{student['name']} (ID: {student['id']}) - "
+                                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+                            )
+                            self.status_label.setText(self.format_status_text(current_text))
+                            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+                        else:
+                            current_text = "Face detected. Processing..."
+                            self.status_label.setText(self.format_status_text(current_text))
+                            self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
+                
+                label_size = min(self.image_label.width(), self.image_label.height())
+                
+                # Crop to square from center
+                height, width, _ = frame.shape
+                crop_size = min(height, width)
+                center_x, center_y = width // 2, height // 2
+                x1 = center_x - crop_size // 2
+                y1 = center_y - crop_size // 2
+                
+                # Ensure crop region is within image bounds
+                x1 = max(0, min(x1, width - crop_size))
+                y1 = max(0, min(y1, height - crop_size))
+                
+                try:
+                    square_frame = frame[y1:y1+crop_size, x1:x1+crop_size]
+                    resized_frame = cv2.resize(square_frame, (label_size, label_size))
+                    rgb_image = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
+                    qt_image = QImage(
+                        rgb_image.data,
+                        rgb_image.shape[1],
+                        rgb_image.shape[0],
+                        rgb_image.strides[0],
+                        QImage.Format_RGB888
+                    )
+                    pixmap = QPixmap.fromImage(qt_image)
+                    self.image_label.setPixmap(pixmap)
+                except Exception as e:
+                    print(f"Error processing frame: {e}")
 
     def format_status_text(self, text):
         return text  # Keep full text for simplicity
@@ -258,6 +386,16 @@ class FaceAttendanceUI(QWidget):
         self.progress_timer.timeout.connect(lambda: self.progress_bar.setValue(self.progress_bar.value()+1))
         self.progress_timer.start(30)
         QTimer.singleShot(3000, self.mock_attendance_result)
+        self.take_attendance_btn.setVisible(False)
+        self.register_face_btn.setVisible(False)
+
+    def update_progress(self):
+        """Update progress bar animation"""
+        self.progress_value += 1
+        if self.progress_value <= 100:
+            self.progress_bar.setValue(self.progress_value)
+        else:
+            self.progress_timer.stop()
 
     def mock_attendance_result(self):
         self.progress_timer.stop()
@@ -269,26 +407,67 @@ class FaceAttendanceUI(QWidget):
         self.retry_face_btn.setVisible(True)
 
     def confirm_face(self):
-        self.attendance.mark_present()
-        self.update_attendance_list()
-        self.status_label.setText(f"{self.attendance.present_count} / {self.attendance.total_students} present")
+        student = self.attendance.student_data.get(self.attendance.current_student)
+        if student:
+            student["present"] = True
+            self.attendance.present_count += 1
+            status_text = (
+                f"{student['name']} (ID: {student['id']}) - "
+                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+            )
+            self.status_label.setText(self.format_status_text(status_text))
+            self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+            
+            self.update_attendance_list()
+            
+        self.attendance.current_student += 1
+        if self.attendance.current_student > len(self.attendance.student_data):
+            self.attendance.current_student = 1
+
+        self.stop_camera()
+        
         self.confirm_face_btn.setVisible(False)
         self.retry_face_btn.setVisible(False)
+        self.take_attendance_btn.setVisible(True)
+        self.register_face_btn.setVisible(True)
+        
 
     def retry_wrong_face(self):
-        self.status_label.setText("Retrying recognition...")
-        self.progress_bar.setVisible(True)
-        self.progress_timer = QTimer(self)
-        self.progress_timer.timeout.connect(lambda: self.progress_bar.setValue(self.progress_bar.value()+5))
-        self.progress_timer.start(30)
-        QTimer.singleShot(2000, self.finish_retry)
+            status_text = "Trying again..."
+            self.status_label.setText(self.format_status_text(status_text))
+            self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_value = 0
+            self.progress_timer = QTimer(self)
+            self.progress_timer.timeout.connect(self.update_progress)
+            self.progress_timer.start(30)
+            
+            self.attendance.current_student += 1
+            if self.attendance.current_student > len(self.attendance.student_data):
+                self.attendance.current_student = 1
+                
+            QTimer.singleShot(1000, self.finish_retry)
 
     def finish_retry(self):
         self.progress_timer.stop()
+        self.progress_bar.setValue(100)
         self.progress_bar.setVisible(False)
-        self.status_label.setText("Retry complete")
-        self.confirm_face_btn.setVisible(False)
-        self.retry_face_btn.setVisible(False)
+        
+        student = self.attendance.student_data.get(self.attendance.current_student)
+        if student:
+            status_text = (
+                f"{student['name']} (ID: {student['id']}) - "
+                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+            )
+            self.status_label.setText(self.format_status_text(status_text))
+            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+        
+        self.confirm_face_btn.setVisible(True)
+        self.retry_face_btn.setVisible(True)
+        self.take_attendance_btn.setVisible(False)
+        self.register_face_btn.setVisible(False)
 
     def register_face(self):
         if not self.new_student_info:

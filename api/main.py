@@ -145,7 +145,7 @@ async def predict_student(input: EmbeddingInput):
         # Tạo DataFrame và predict
         df = pd.DataFrame([input.embedding])
         pred = model.predict(df)[0]
-        conf = max(model.predict_proba(df))
-        return {"student_id":int(pred),"confidence":float(conf)}
+        conf = max(model.predict_proba(df)[0])
+        return {"student_id": int(pred), "confidence": round(conf, 2)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

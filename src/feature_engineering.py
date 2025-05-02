@@ -66,30 +66,3 @@ class FaceEmbedding:
         # face_img = face_img.astype('float32')
         embedding = self.extract_embedding(face_img)
         return embedding
-    
-    # def embedding_train_data(self):
-    #     """
-    #     Trích xuất embedding cho tất cả ảnh sinh viên trong thư mục self.images_path.
-    #     Mỗi thư mục con là mã sinh viên, trong đó chứa các ảnh.
-    #     Embedding của mỗi sinh viên sẽ được lưu vào 1 file .npy trong self.vector_db_path
-    #     """
-    #     for student_id in os.listdir(self.images_path):
-    #         student_folder = os.path.join(self.images_path, student_id)
-    #         if not os.path.isdir(student_folder):
-    #             continue
-
-    #         embeddings = []
-    #         for img_name in os.listdir(student_folder):
-    #             img_path = os.path.join(student_folder, img_name)
-    #             img = cv2.imread(img_path)
-    #             if img is None:
-    #                 continue
-
-    #             embedding = self.embedding_face(img)
-    #             if embedding is not None:
-    #                 embeddings.append(embedding)
-
-    #         if embeddings:
-    #             embeddings_np = np.array(embeddings)
-    #             np.save(os.path.join(self.vector_db_path, f"{student_id}.npy"), embeddings_np)
-    #             print(f"[INFO] Saved {len(embeddings)} embeddings for student {student_id}.")

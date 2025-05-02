@@ -11,6 +11,6 @@ class APIClient:
     def predict(self, vec_embedding):
         url = f"{self.base_url}/predict"
         files = {"embedding": vec_embedding.tolist()}
-        response = requests.post(url, headers=self.headers, files=files)
+        response = requests.post(url, json=files)
         response.raise_for_status()
-        return response.json()
+        return response

@@ -1,5 +1,8 @@
-import sys
+import sys, os
 import cv2
+import copy
+import time
+
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
     QHBoxLayout, QProgressBar, QMessageBox, QSizePolicy,
@@ -8,15 +11,22 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer
 
+from api_client import APIClient
 from dialogs import StudentRegistrationDialog
 from face_detector import FaceDetector
 from attendance_manager import AttendanceManager
+
+dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'))
+if dir_path not in sys.path:
+    sys.path.insert(0, dir_path)
+
+from feature_engineering import FaceEmbedding
 
 class FaceAttendanceUI(QWidget):
     def __init__(self):
         super().__init__()
         # Initialize modules
-        import copy
+        
         base_students = {
             1: {"name": "John Doe", "id": "12345", "present": False},
             2: {"name": "Jane Smith", "id": "67890", "present": False},
@@ -25,7 +35,8 @@ class FaceAttendanceUI(QWidget):
             base_students[i] = {"name": f"Student {i}", "id": f"ID{10000+i}", "present": False}
         self.attendance = AttendanceManager(copy.deepcopy(base_students))
         self.detector = FaceDetector()
-
+        self.embedder = FaceEmbedding()
+        self.API = APIClient("http://127.0.0.1:8000/")  # Local host
         # Camera & timers
         self.cap = None
         self.timer = QTimer()
@@ -309,44 +320,81 @@ class FaceAttendanceUI(QWidget):
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
-                # Detect faces and draw squares
-                frame, face_count = self.detect_and_draw_faces(frame)
+                # Detect faces and select the largest one
+                faces = self.detector.detect_faces(frame)
+                self.face_detected = len(faces) > 0
+
+                # Find the largest face by area
+                largest_face = None
+                max_area = 0
+                for (x, y, w, h) in faces:
+                    area = w * h
+                    if area > max_area:
+                        max_area = area
+                        largest_face = (x, y, w, h)
+
+                # Draw rectangle only for the largest face
+                if largest_face:
+                    x, y, w, h = largest_face
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 123, 0), 3)
+                    face_count = 1
+                else:
+                    face_count = 0
+
+                # --- Capture and embed the largest face every 5 seconds ---
+                if largest_face:
+                    # Only process every 5 seconds
+                    if not hasattr(self, "_last_embed_time"):
+                        self._last_embed_time = 0
+                    now = time.time()
+                    if now - self._last_embed_time > 10:
+                        self._last_embed_time = now
+                        
+                        try:
+                            # Get embedding vector
+                            embedding = self.embedder.embedding_face(frame)
+                            # Send to API (example: /recognize endpoint)
+                            response = self.API.predict(embedding)
+                            response = response.json()
+
+                        except Exception as e:
+                            print(f"Embedding/API error: {e}")
+
                 if self.confirm_face_btn.isVisible() or self.progress_bar.isVisible():
                     if face_count == 0:
                         current_text = "No face detected. Please position your face in the camera."
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
-                    elif face_count > 1:
-                        current_text = f"{face_count} faces detected. Please ensure only one face is visible."
-                        self.status_label.setText(self.format_status_text(current_text))
-                        self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
                     elif face_count == 1 and "No face detected" in self.status_label.text():
                         student = self.attendance.student_data.get(self.attendance.current_student)
-                        if student and self.confirm_face_btn.isVisible():
-                            current_text = (
-                                f"{student['name']} (ID: {student['id']}) - "
-                                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-                            )
-                            self.status_label.setText(self.format_status_text(current_text))
-                            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
-                        else:
-                            current_text = "Face detected. Processing..."
-                            self.status_label.setText(self.format_status_text(current_text))
-                            self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
-                
+                        current_text = "Student ID: {} (confidence: {})".format(response["student_id"],response["confidence"])
+                        self.status_label.setText(self.format_status_text(current_text))
+                        self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+                        # if student and self.confirm_face_btn.isVisible():
+                        #     current_text = (
+                        #         f"{student['name']} (ID: {student['id']}) - "
+                        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+                        #     )
+                        #     self.status_label.setText(self.format_status_text(current_text))
+                        #     self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+                        # else:
+                        #     current_text = "Face detected. Processing..."
+                        #     self.status_label.setText(self.format_status_text(current_text))
+                        #     self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
+
                 label_size = min(self.image_label.width(), self.image_label.height())
-                
+
                 # Crop to square from center
                 height, width, _ = frame.shape
                 crop_size = min(height, width)
                 center_x, center_y = width // 2, height // 2
                 x1 = center_x - crop_size // 2
                 y1 = center_y - crop_size // 2
-                
+
                 # Ensure crop region is within image bounds
                 x1 = max(0, min(x1, width - crop_size))
                 y1 = max(0, min(y1, height - crop_size))
-                
+
                 try:
                     square_frame = frame[y1:y1+crop_size, x1:x1+crop_size]
                     resized_frame = cv2.resize(square_frame, (label_size, label_size))
@@ -424,13 +472,12 @@ class FaceAttendanceUI(QWidget):
         if self.attendance.current_student > len(self.attendance.student_data):
             self.attendance.current_student = 1
 
-        self.stop_camera()
+        # self.stop_camera()
         
-        self.confirm_face_btn.setVisible(False)
-        self.retry_face_btn.setVisible(False)
-        self.take_attendance_btn.setVisible(True)
-        self.register_face_btn.setVisible(True)
-        
+        # self.confirm_face_btn.setVisible(False)
+        # self.retry_face_btn.setVisible(False)
+        # self.take_attendance_btn.setVisible(True)
+        # self.register_face_btn.setVisible(True)
 
     def retry_wrong_face(self):
             status_text = "Trying again..."
@@ -455,14 +502,14 @@ class FaceAttendanceUI(QWidget):
         self.progress_bar.setValue(100)
         self.progress_bar.setVisible(False)
         
-        student = self.attendance.student_data.get(self.attendance.current_student)
-        if student:
-            status_text = (
-                f"{student['name']} (ID: {student['id']}) - "
-                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-            )
-            self.status_label.setText(self.format_status_text(status_text))
-            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+        # student = self.attendance.student_data.get(self.attendance.current_student)
+        # if student:
+        #     status_text = (
+        #         f"{student['name']} (ID: {student['id']}) - "
+        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+        #     )
+        #     self.status_label.setText(self.format_status_text(status_text))
+        #     self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
         
         self.confirm_face_btn.setVisible(True)
         self.retry_face_btn.setVisible(True)

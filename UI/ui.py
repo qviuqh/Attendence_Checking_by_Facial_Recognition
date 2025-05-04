@@ -355,8 +355,7 @@ class FaceAttendanceUI(QWidget):
                             embedding = self.embedder.embedding_face(frame)
                             # Send to API (example: /recognize endpoint)
                             response = self.API.predict(embedding)
-                            response = response.json()
-
+                            self._response = response.json()
                         except Exception as e:
                             print(f"Embedding/API error: {e}")
 
@@ -365,9 +364,9 @@ class FaceAttendanceUI(QWidget):
                         current_text = "No face detected. Please position your face in the camera."
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
-                    elif face_count == 1 and "No face detected" in self.status_label.text():
+                    elif face_count == 1 and hasattr(self, "_response"):
                         student = self.attendance.student_data.get(self.attendance.current_student)
-                        current_text = "Student ID: {} (confidence: {})".format(response["student_id"],response["confidence"])
+                        current_text = "Student ID: {} (confidence: {})".format(self._response["student_id"],self._response["confidence"])
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
                         # if student and self.confirm_face_btn.isVisible():
@@ -430,6 +429,7 @@ class FaceAttendanceUI(QWidget):
         self.confirm_face_btn.setVisible(False)
         self.retry_face_btn.setVisible(False)
         self.start_camera()
+        self.API.load_model()
         self.progress_timer = QTimer(self)
         self.progress_timer.timeout.connect(lambda: self.progress_bar.setValue(self.progress_bar.value()+1))
         self.progress_timer.start(30)

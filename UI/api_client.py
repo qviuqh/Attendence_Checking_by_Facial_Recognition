@@ -8,6 +8,11 @@ class APIClient:
         self.api_key = api_key
         self.headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
 
+    def load_model(self):
+        url = f"{self.base_url}/load_model"
+        response = requests.post(url)
+        response.raise_for_status()
+
     def predict(self, vec_embedding):
         url = f"{self.base_url}/predict"
         files = {"embedding": vec_embedding.tolist()}

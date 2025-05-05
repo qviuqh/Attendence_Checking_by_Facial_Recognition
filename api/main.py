@@ -5,11 +5,14 @@ from typing import List
 import pandas as pd
 import joblib
 import os
+import json
 import wandb
 
 # --- Config ---
 artifact_model_name = "attendance_face_recognition/model_export:latest"
 model_path = "model_export/model.pkl"
+
+artifact_json_name = "attendance_face_recognition/students.json:latest"
 
 # --- Init App ---
 app = FastAPI()
@@ -20,6 +23,16 @@ def load_model():
     model_export_path = run.use_artifact(artifact_model_name).download()
     model = joblib.load(os.path.join(model_export_path, "model_export"))
     print("-- Model loaded into memory. --")
+
+def load_json_data(artifact_json_name):
+    global data_json
+    run = wandb.init(project="attendance_face_recognition", job_type="api")
+    json_artifact_path = run.use_artifact(artifact_json_name).download()
+    json_file_path = os.path.join(json_artifact_path, "students.json")
+    with open(json_file_path, 'r', encoding='utf-8') as f:
+        data_json = json.load(f)
+    print("-- JSON data loaded into memory. --")
+    return data_json
 
 # --- Pydantic Schema ---
 class EmbeddingInput(BaseModel):
@@ -48,6 +61,11 @@ async def root():
 def load_latest_model():
     load_model()
     return {"message": "Model loaded successfully."}
+
+@app.post("/load_json_data")
+def load_latest_json():
+    students = load_json_data(artifact_json_name)
+    return students
 
 @app.post("/predict")
 async def predict_student(input: EmbeddingInput):

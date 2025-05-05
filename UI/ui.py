@@ -26,18 +26,32 @@ from feature_engineering import FaceEmbedding
 class FaceAttendanceUI(QWidget):
     def __init__(self):
         super().__init__()
-        # Initialize modules
+        
+        self.API = APIClient("http://127.0.0.1:8000/")  # Local host
+        
+        try:
+            students = self.API.load_json_data()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi tải dữ liệu", str(e))
+            students = {}
         
         base_students = {
-            1: {"name": "John Doe", "id": "12345", "present": False},
-            2: {"name": "Jane Smith", "id": "67890", "present": False},
+            stu_id: {"name": stu_name, "id": stu_id, "present": False}
+            for stu_id, stu_name in students.items()
         }
-        for i in range(3, 43):
-            base_students[i] = {"name": f"Student {i}", "id": f"ID{10000+i}", "present": False}
-        self.attendance = AttendanceManager(copy.deepcopy(base_students))
+        # base_students = {}
+        # for idx, (stu_id, stu_name) in enumerate(students.items(), start=1):
+        #     base_students[idx] = {
+        #         "name":    stu_name,
+        #         "id":      stu_id,
+        #         "present": False
+        #     }
+
+        self.current_student_id = None
+        self.attendance = AttendanceManager(base_students)
+        # Initialize modules
         self.detector = FaceDetector()
         self.embedder = FaceEmbedding()
-        self.API = APIClient("http://127.0.0.1:8000/")  # Local host
         
         # Handle multi threading
         self._last_embed_time = 0
@@ -134,7 +148,8 @@ class FaceAttendanceUI(QWidget):
         self.left_layout.addWidget(self.image_label, stretch=1)
 
         # Status label with styled appearance
-        self.status_label = QLabel("0 / 42 students present")
+        num_students = len(self.attendance.student_data)
+        self.status_label = QLabel("0 / {} students present".format(num_students))
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setWordWrap(True)
         self.status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -361,19 +376,21 @@ class FaceAttendanceUI(QWidget):
                 if self._future and self._future.done():
                     try:
                         self._response = self._future.result()
+                        self.current_student_id = str(self._response["student_id"]) if self._response else None
                     except Exception as e:
                         print("API error:", e)
                         self._response = None
                     finally:
                         self._future = None
-
+                
                 if self.confirm_face_btn.isVisible() or self.progress_bar.isVisible():
                     if face_count == 0:
                         current_text = "No face detected. Please position your face in the camera."
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
-                    elif face_count == 1 and hasattr(self, "_response"):
-                        student = self.attendance.student_data.get(self.attendance.current_student)
+                        self._response = None
+                    elif face_count == 1 and hasattr(self, "_response") and self._response:
+                        # student = self.attendance.student_data.get(self.attendance.current_student)
                         current_text = "Student ID: {} (confidence: {})".format(self._response["student_id"],self._response["confidence"])
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
@@ -384,10 +401,10 @@ class FaceAttendanceUI(QWidget):
                         #     )
                         #     self.status_label.setText(self.format_status_text(current_text))
                         #     self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
-                        # else:
-                        #     current_text = "Face detected. Processing..."
-                        #     self.status_label.setText(self.format_status_text(current_text))
-                        #     self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
+                    else:
+                        current_text = "Face detected. Processing..."
+                        self.status_label.setText(self.format_status_text(current_text))
+                        self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
 
                 label_size = min(self.image_label.width(), self.image_label.height())
 
@@ -441,8 +458,8 @@ class FaceAttendanceUI(QWidget):
         self.progress_bar.setValue(0)
         self.confirm_face_btn.setVisible(False)
         self.retry_face_btn.setVisible(False)
-        self.start_camera()
         self.API.load_model()
+        self.start_camera()
         self.progress_timer = QTimer(self)
         self.progress_timer.timeout.connect(lambda: self.progress_bar.setValue(self.progress_bar.value()+1))
         self.progress_timer.start(30)
@@ -461,29 +478,61 @@ class FaceAttendanceUI(QWidget):
     def mock_attendance_result(self):
         self.progress_timer.stop()
         self.progress_bar.setValue(100)
-        stu = self.attendance.student_data[self.attendance.current_student]
-        self.status_label.setText(f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present")
         self.progress_bar.setVisible(False)
+
+        # Kiểm tra nếu chưa có kết quả nhận diện
+        if not self.current_student_id or self.current_student_id not in self.attendance.student_data:
+            self.status_label.setText("❌ Không nhận diện được khuôn mặt. Vui lòng thử lại.")
+            self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
+            self.confirm_face_btn.setVisible(False)
+            self.retry_face_btn.setVisible(True)
+            return
+
+        stu = self.attendance.student_data[self.current_student_id]
+        self.status_label.setText(
+            f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present"
+        )
+        self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
         self.confirm_face_btn.setVisible(True)
         self.retry_face_btn.setVisible(True)
 
+    # def mock_attendance_result(self):
+    #     self.progress_timer.stop()
+    #     self.progress_bar.setValue(100)
+    #     stu = self.attendance.student_data[self.current_student_id]
+    #     self.status_label.setText(f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present")
+    #     self.progress_bar.setVisible(False)
+    #     self.confirm_face_btn.setVisible(True)
+    #     self.retry_face_btn.setVisible(True)
+
     def confirm_face(self):
-        student = self.attendance.student_data.get(self.attendance.current_student)
-        if student:
-            student["present"] = True
-            self.attendance.present_count += 1
-            status_text = (
-                f"{student['name']} (ID: {student['id']}) - "
-                f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-            )
-            self.status_label.setText(self.format_status_text(status_text))
-            self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+        if not self.current_student_id:
+            return
+
+        # đánh dấu sinh viên theo mã
+        self.attendance.mark_present(self.current_student_id)
+        # cập nhật lại danh sách và label
+        self.update_attendance_list()
+        self.status_label.setText(
+            f"{self.attendance.student_data[self.current_student_id]['name']} (ID: {self.current_student_id}) - "
+            f"{self.attendance.present_count} / {self.attendance.total_students} present"
+        )
+        # student = self.attendance.student_data.get(self.attendance.current_student)
+        # if student:
+        #     student["present"] = True
+        #     self.attendance.present_count += 1
+        #     status_text = (
+        #         f"{student['name']} (ID: {student['id']}) - "
+        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
+        #     )
+        #     self.status_label.setText(self.format_status_text(status_text))
+        #     self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
             
-            self.update_attendance_list()
+        #     self.update_attendance_list()
             
-        self.attendance.current_student += 1
-        if self.attendance.current_student > len(self.attendance.student_data):
-            self.attendance.current_student = 1
+        # self.attendance.current_student += 1
+        # if self.attendance.current_student > len(self.attendance.student_data):
+        #     self.attendance.current_student = 1
 
         # self.stop_camera()
         

@@ -13,6 +13,12 @@ class APIClient:
         response = requests.post(url)
         response.raise_for_status()
 
+    def load_json_data(self):
+        url = f"{self.base_url}/load_json_data"
+        response = requests.post(url)
+        response.raise_for_status()
+        return response.json()
+
     def predict(self, vec_embedding):
         url = f"{self.base_url}/predict"
         files = {"embedding": vec_embedding.tolist()}

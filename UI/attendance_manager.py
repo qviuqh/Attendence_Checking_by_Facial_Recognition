@@ -6,12 +6,16 @@ class AttendanceManager:
         self.present_count = 0
         self.current_student = 1
 
-    def mark_present(self):
-        student = self.student_data.get(self.current_student)
-        if student and not student.get('present', False):
-            student['present'] = True
+    def mark_present(self, student_id):
+        rec = self.student_data.get(student_id)
+        if rec and not rec["present"]:
+            rec["present"] = True
             self.present_count += 1
-        self.advance()
+        # student = self.student_data.get(self.current_student)
+        # if student and not student.get('present', False):
+        #     student['present'] = True
+        #     self.present_count += 1
+        # self.advance()
 
     def advance(self):
         self.current_student += 1

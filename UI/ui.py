@@ -2,6 +2,7 @@ import sys, os
 import cv2
 import copy
 import time
+import concurrent.futures
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
@@ -37,6 +38,12 @@ class FaceAttendanceUI(QWidget):
         self.detector = FaceDetector()
         self.embedder = FaceEmbedding()
         self.API = APIClient("http://127.0.0.1:8000/")  # Local host
+        
+        # Handle multi threading
+        self._last_embed_time = 0
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self._future = None
+        
         # Camera & timers
         self.cap = None
         self.timer = QTimer()
@@ -341,23 +348,24 @@ class FaceAttendanceUI(QWidget):
                 else:
                     face_count = 0
 
-                # --- Capture and embed the largest face every 5 seconds ---
-                if largest_face:
-                    # Only process every 5 seconds
-                    if not hasattr(self, "_last_embed_time"):
-                        self._last_embed_time = 0
-                    now = time.time()
-                    if now - self._last_embed_time > 10:
-                        self._last_embed_time = now
-                        
-                        try:
-                            # Get embedding vector
-                            embedding = self.embedder.embedding_face(frame)
-                            # Send to API (example: /recognize endpoint)
-                            response = self.API.predict(embedding)
-                            self._response = response.json()
-                        except Exception as e:
-                            print(f"Embedding/API error: {e}")
+                # Nếu có face và đã qua 5s, submit API call vào thread pool
+                now = time.time()
+                if largest_face and (now - self._last_embed_time > 5):
+                    self._last_embed_time = now
+                    if self._future is None or self._future.done():
+                        # copy frame để khỏi race condition
+                        frame_copy = frame.copy()
+                        self._future = self.executor.submit(self.call_api, frame_copy)
+
+                # Kiểm tra nếu có kết quả API đã xong
+                if self._future and self._future.done():
+                    try:
+                        self._response = self._future.result()
+                    except Exception as e:
+                        print("API error:", e)
+                        self._response = None
+                    finally:
+                        self._future = None
 
                 if self.confirm_face_btn.isVisible() or self.progress_bar.isVisible():
                     if face_count == 0:
@@ -409,6 +417,11 @@ class FaceAttendanceUI(QWidget):
                     self.image_label.setPixmap(pixmap)
                 except Exception as e:
                     print(f"Error processing frame: {e}")
+
+    def call_api(self, frame):
+        emb = self.embedder.embedding_face(frame)
+        resp = self.API.predict(emb)
+        return resp.json()
 
     def format_status_text(self, text):
         return text  # Keep full text for simplicity

@@ -31,24 +31,28 @@ class Processing_Img():
         Đọc tất cả các tệp video trong thư mục video_dir và trích xuất khung hình và xử lý nó từ mỗi video.
         Embedding các frame đã xử lý đó thành các vector d-512
         Args:
-        Returns: DataFrame chứa các vector d-512 và student_id cho mỗi khung hình đã xử lý.
+        Returns: DataFrame chứa các vector d-512, student_id và student_name cho mỗi khung hình đã xử lý.
         """
         embedder = fe.FaceEmbedding()
 
-        # Lấy danh sách tất cả tệp MP4 trong thư mục video
+        # Lấy danh sách tất cả tệp MOV trong thư mục video
         video_files = glob.glob(os.path.join(self.video_dir, "*.mov"))
 
         if not video_files:
             print("Không tìm thấy tệp MOV nào trong thư mục:", self.video_dir)
             exit()
         
-        df = pd.DataFrame(columns=range(513))  # Tạo DataFrame rỗng với 513 cột (512 cho embedding + 1 cho student_id)
+        df = pd.DataFrame(columns=range(513))  # 512 cho embedding + 1 cho student_id
         index = 0
         
         # Lặp qua từng tệp video
         for video_file in video_files:
-            # Lấy tên tệp (mã sinh viên) từ đường dẫn, bỏ phần mở rộng .mp4
-            student_id = os.path.splitext(os.path.basename(video_file))[0]
+            # Lấy tên tệp (mã sinh viên và tên sinh viên) từ đường dẫn, bỏ phần mở rộng .mov
+            filename = os.path.splitext(os.path.basename(video_file))[0]
+            if "_" not in filename:
+                print(f"Tên file không đúng định dạng [mã sv]_[tên sv]: {filename}")
+                continue
+            student_id, student_name = filename.split("_", 1)
             
             if student_id in self.student:
                 continue  # Bỏ qua video nếu student_id đã có trong danh sách student
@@ -85,7 +89,7 @@ class Processing_Img():
                         frame_count += 1
                         continue
                     embedding = pd.Series(embedding)
-                    embedding = pd.concat([embedding, pd.Series([student_id])], ignore_index=True)
+                    embedding = pd.concat([embedding, pd.Series([student_id, student_name])], ignore_index=True)
                     df.loc[index] = embedding
                     index += 1
                     counter += 1
@@ -94,7 +98,7 @@ class Processing_Img():
             # Giải phóng đối tượng VideoCapture
             cap.release()
             # In thông báo kết quả cho video hiện tại
-            print(f"Đã trích xuất {counter} khung hình từ video cuar sinh viên {student_id}")
-            self.student[student_id] = counter  # Thêm student_id vào danh sách đã xử lý
+            print(f"Đã trích xuất {counter} khung hình từ video của sinh viên {student_id} - {student_name}")
+            self.student[student_id] = student_name  # Thêm student_id và student_name vào dictionary
         print("Hoàn tất xử lý tất cả video.")
         return df

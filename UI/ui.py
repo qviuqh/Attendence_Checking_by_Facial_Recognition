@@ -1,13 +1,13 @@
 import sys, os
 import cv2
-import copy
+import pandas as pd
 import time
 import concurrent.futures
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
     QHBoxLayout, QProgressBar, QMessageBox, QSizePolicy,
-    QSplitter, QListWidget, QListWidgetItem, QDialog
+    QSplitter, QListWidget, QListWidgetItem, QDialog, QInputDialog
 )
 from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer
@@ -27,6 +27,7 @@ class FaceAttendanceUI(QWidget):
     def __init__(self):
         super().__init__()
         
+        self.pause_api = False
         self.API = APIClient("http://127.0.0.1:8000/")  # Local host
         
         try:
@@ -46,7 +47,10 @@ class FaceAttendanceUI(QWidget):
         #         "id":      stu_id,
         #         "present": False
         #     }
-
+        
+        cols = [i for i in range(513)]
+        self.embedding_df = pd.DataFrame(columns=cols)
+        
         self.current_student_id = None
         self.attendance = AttendanceManager(base_students)
         # Initialize modules
@@ -365,7 +369,7 @@ class FaceAttendanceUI(QWidget):
 
                 # Nếu có face và đã qua 5s, submit API call vào thread pool
                 now = time.time()
-                if largest_face and (now - self._last_embed_time > 5):
+                if not self.pause_api and largest_face and (now - self._last_embed_time > 5):
                     self._last_embed_time = now
                     if self._future is None or self._future.done():
                         # copy frame để khỏi race condition
@@ -437,6 +441,7 @@ class FaceAttendanceUI(QWidget):
 
     def call_api(self, frame):
         emb = self.embedder.embedding_face(frame)
+        self._last_embedding = emb.tolist()
         resp = self.API.predict(emb)
         return resp.json()
 
@@ -480,19 +485,13 @@ class FaceAttendanceUI(QWidget):
         self.progress_bar.setValue(100)
         self.progress_bar.setVisible(False)
 
-        # Kiểm tra nếu chưa có kết quả nhận diện
-        if not self.current_student_id or self.current_student_id not in self.attendance.student_data:
-            self.status_label.setText("❌ Không nhận diện được khuôn mặt. Vui lòng thử lại.")
-            self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
-            self.confirm_face_btn.setVisible(False)
-            self.retry_face_btn.setVisible(True)
-            return
-
-        stu = self.attendance.student_data[self.current_student_id]
-        self.status_label.setText(
-            f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present"
-        )
-        self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+        if self.current_student_id and self.current_student_id in self.attendance.student_data:
+            # Nếu có kết quả nhận diện, cập nhật lại danh sách và label
+            stu = self.attendance.student_data[self.current_student_id]
+            self.status_label.setText(
+                f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present"
+            )
+            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
         self.confirm_face_btn.setVisible(True)
         self.retry_face_btn.setVisible(True)
 
@@ -542,22 +541,56 @@ class FaceAttendanceUI(QWidget):
         # self.register_face_btn.setVisible(True)
 
     def retry_wrong_face(self):
-            status_text = "Trying again..."
-            self.status_label.setText(self.format_status_text(status_text))
-            self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+        # 1. Tạm dừng việc gọi API
+        self.pause_api = True
+
+        # 2. Yêu cầu nhập mã SV thủ công
+        student_id, ok = QInputDialog.getText(
+            self,
+            "Nhập mã SV",
+            "Nhận diện sai. Nhập mã sinh viên để điểm danh:"
+        )
+        if not ok or not student_id.strip():
+            self.status_label.setText("❌ Chưa nhập mã. Vui lòng thử lại.")
+            # Tháo pause để tiếp tục API
+            self.pause_api = False
+            return
+
+        student_id = student_id.strip()
+
+        # 3. Lấy embedding vừa dùng (lưu sẵn trong call_api)
+        #    giả sử bạn đã lưu self._last_embedding = [...] trong call_api()
+        row = self._last_embedding + [int(student_id)]
+        self.embedding_df.loc[len(self.embedding_df)] = row
+
+        # 4. Đánh dấu điểm danh và cập nhật UI
+        self.attendance.mark_present(student_id)
+        self.update_attendance_list()
+        self.status_label.setText(
+            f"✅ Điểm danh sinh viên {student_id} thành công.\n"
+            f"{self.attendance.present_count} / {self.attendance.total_students} present"
+        )
+
+        # 5. Bật lại việc gọi API cho những lần tiếp theo
+        self.pause_api = False
+
+    # def retry_wrong_face(self):
+    #         status_text = "Trying again..."
+    #         self.status_label.setText(self.format_status_text(status_text))
+    #         self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
             
-            self.progress_bar.setVisible(True)
-            self.progress_bar.setValue(0)
-            self.progress_value = 0
-            self.progress_timer = QTimer(self)
-            self.progress_timer.timeout.connect(self.update_progress)
-            self.progress_timer.start(30)
+    #         self.progress_bar.setVisible(True)
+    #         self.progress_bar.setValue(0)
+    #         self.progress_value = 0
+    #         self.progress_timer = QTimer(self)
+    #         self.progress_timer.timeout.connect(self.update_progress)
+    #         self.progress_timer.start(30)
             
-            self.attendance.current_student += 1
-            if self.attendance.current_student > len(self.attendance.student_data):
-                self.attendance.current_student = 1
+    #         self.attendance.current_student += 1
+    #         if self.attendance.current_student > len(self.attendance.student_data):
+    #             self.attendance.current_student = 1
                 
-            QTimer.singleShot(1000, self.finish_retry)
+    #         QTimer.singleShot(1000, self.finish_retry)
 
     def finish_retry(self):
         self.progress_timer.stop()
@@ -614,7 +647,22 @@ class FaceAttendanceUI(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_font_sizes()
-
+    
     def closeEvent(self, event):
-        if self.cap: self.stop_camera()
+        # 1. Lưu DataFrame embeddings ra file CSV
+        try:
+            # bạn có thể đổi đường dẫn hoặc filename tuỳ ý
+            self.embedding_df.to_csv("collected_embeddings.csv", index=False)
+            print("Saved embeddings to collected_embeddings.csv")
+        except Exception as e:
+            print("Failed to save embeddings:", e)
+
+        # 2. Dừng camera nếu còn mở
+        if self.cap:
+            self.stop_camera()
+
         event.accept()
+    
+    # def closeEvent(self, event):
+    #     if self.cap: self.stop_camera()
+    #     event.accept()

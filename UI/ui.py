@@ -1,55 +1,45 @@
-import sys, os
+import os
 import cv2
 import pandas as pd
 import time
+import json
 import concurrent.futures
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
     QHBoxLayout, QProgressBar, QMessageBox, QSizePolicy,
-    QSplitter, QListWidget, QListWidgetItem, QDialog, QInputDialog
+    QSplitter, QListWidget, QListWidgetItem, QInputDialog, QFileDialog
 )
-from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor, QIcon
+from PyQt5.QtCore import Qt, QTimer, QSize
 
 from api_client import APIClient
-from dialogs import StudentRegistrationDialog
+# from dialogs import StudentRegistrationDialog
 from face_detector import FaceDetector
 from attendance_manager import AttendanceManager
 
-dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'))
-if dir_path not in sys.path:
-    sys.path.insert(0, dir_path)
-
-from feature_engineering import FaceEmbedding
+from src.feature_engineering import FaceEmbedding
+from src.preprocessing import Processing_Img
 
 class FaceAttendanceUI(QWidget):
     def __init__(self):
         super().__init__()
         
+        self.log = pd.DataFrame(columns=["student_id", "student_name", "timestamp", "status"])
+        
         self.pause_api = False
         self.API = APIClient("http://127.0.0.1:8000/")  # Local host
         
         try:
-            students = self.API.load_json_data()
+            self.students = self.API.load_json_data()
         except Exception as e:
             QMessageBox.critical(self, "Lỗi tải dữ liệu", str(e))
-            students = {}
+            self.students = {}
         
         base_students = {
             stu_id: {"name": stu_name, "id": stu_id, "present": False}
-            for stu_id, stu_name in students.items()
+            for stu_id, stu_name in self.students.items()
         }
-        # base_students = {}
-        # for idx, (stu_id, stu_name) in enumerate(students.items(), start=1):
-        #     base_students[idx] = {
-        #         "name":    stu_name,
-        #         "id":      stu_id,
-        #         "present": False
-        #     }
-        
-        cols = [i for i in range(513)]
-        self.embedding_df = pd.DataFrame(columns=cols)
         
         self.current_student_id = None
         self.attendance = AttendanceManager(base_students)
@@ -100,6 +90,22 @@ class FaceAttendanceUI(QWidget):
         self.setWindowTitle("Face Recognition Attendance System")
         self.setMinimumSize(800, 800) 
 
+        self.back_btn = QPushButton()
+        self.back_btn.setIcon(QIcon(r"icon/back_btn.png"))
+        self.back_btn.setIconSize(QSize(28, 28))
+        self.back_btn.setFixedSize(36, 36)
+        self.back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+        """)
+        self.back_btn.clicked.connect(self.back_to_main)
+        self.back_btn.setVisible(False)
         # Main layout
         self.main_layout = QHBoxLayout()
         self.main_layout.setSpacing(20)
@@ -289,11 +295,24 @@ class FaceAttendanceUI(QWidget):
             self.splitter.setSizes([int(self.width()*0.6), int(self.width()*0.4)])
             self.update_attendance_list()
 
+    def back_to_main(self):
+        self.stop_camera()
+        self.image_label.clear()  # Clear the camera feed display
+        self.take_attendance_btn.setVisible(True)
+        self.register_face_btn.setVisible(True)
+        self.confirm_face_btn.setVisible(False)
+        self.retry_face_btn.setVisible(False)
+        self.back_btn.setVisible(False)
+        self.progress_bar.setVisible(False)
+        # Reset status label to initial state
+        self.status_label.setText(f"{self.attendance.present_count} / {self.attendance.total_students} students present")
+        self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;") 
+
     def update_attendance_list(self):
         if not self.attendance_list_visible:
             return
         self.attendance_list.clear()
-        for idx, student in sorted(self.attendance.student_data.items()):
+        for idx, student in self.attendance.student_data.items():
             status = "✅ Present" if student['present'] else "❌ Absent"
             text = f"{student['name']} (ID: {student['id']}) - {status}"
             item = QListWidgetItem(text)
@@ -315,7 +334,7 @@ class FaceAttendanceUI(QWidget):
         btn_font = QFont(); btn_font.setPointSize(btn_size)
         for btn in [self.take_attendance_btn, self.register_face_btn,
                     self.confirm_face_btn, self.retry_face_btn,
-                    self.show_attendance_list_btn]:
+                    self.show_attendance_list_btn, self.back_btn]:
             btn.setFont(btn_font)
 
     def start_camera(self):
@@ -393,22 +412,24 @@ class FaceAttendanceUI(QWidget):
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #DC3545; font-weight: bold; padding: 8px; margin: 5px 0;")
                         self._response = None
+                        self.confirm_face_btn.setEnabled(False)
                     elif face_count == 1 and hasattr(self, "_response") and self._response:
                         # student = self.attendance.student_data.get(self.attendance.current_student)
-                        current_text = "Student ID: {} (confidence: {})".format(self._response["student_id"],self._response["confidence"])
-                        self.status_label.setText(self.format_status_text(current_text))
-                        self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
-                        # if student and self.confirm_face_btn.isVisible():
-                        #     current_text = (
-                        #         f"{student['name']} (ID: {student['id']}) - "
-                        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-                        #     )
-                        #     self.status_label.setText(self.format_status_text(current_text))
-                        #     self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+                        if self._response["confidence"] < 2 / len(self.attendance.student_data):
+                            current_text = "Unknown face detected..."
+                            self.status_label.setText(self.format_status_text(current_text))
+                            self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
+                            self.confirm_face_btn.setEnabled(False)
+                        else:
+                            current_text = "Student ID: {} (confidence: {})".format(self._response["student_id"],self._response["confidence"])
+                            self.status_label.setText(self.format_status_text(current_text))
+                            self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
+                            self.confirm_face_btn.setEnabled(True)
                     else:
                         current_text = "Face detected. Processing..."
                         self.status_label.setText(self.format_status_text(current_text))
                         self.status_label.setStyleSheet("color: #007BFF; font-weight: bold; padding: 8px; margin: 5px 0;")
+                        self.confirm_face_btn.setEnabled(False)
 
                 label_size = min(self.image_label.width(), self.image_label.height())
 
@@ -441,24 +462,80 @@ class FaceAttendanceUI(QWidget):
 
     def call_api(self, frame):
         emb = self.embedder.embedding_face(frame)
-        self._last_embedding = emb.tolist()
         resp = self.API.predict(emb)
         return resp.json()
 
     def format_status_text(self, text):
         return text  # Keep full text for simplicity
-
+    
     def show_registration_dialog(self):
-        dlg = StudentRegistrationDialog(self)
-        if dlg.exec_() == QDialog.Accepted:
-            info = dlg.get_student_info()
-            if not info['name'] or not info['id']:
-                QMessageBox.warning(self, "Invalid Input", "Enter both name and ID.")
-                return
-            self.new_student_info = info
-            self.register_face()
+        # Mở dialog để người dùng chọn nhiều video
+        prep_df = pd.DataFrame(columns=range(513))  # 512 cho embedding + 1 cho student_id
+        
+        video_paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Face Videos",
+            "",
+            "Video Files (*.mp4 *.mov *.avi *.mkv *.flv *.webm *.m4v *.wmv *.3gp)"
+        )
+        if not video_paths:
+            QMessageBox.warning(self, "Missing Videos", "Bạn phải chọn ít nhất một video.")
+            return
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Processing Videos")
+        msg_box.setText("Video đang được xử lý...\n(Vui lòng KHÔNG tắt ứng dụng)")
+        msg_box.setStandardButtons(QMessageBox.NoButton)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStyleSheet("QLabel{min-width:300px; min-height:60px; font-size:14px;}")
+        msg_box.show()
+        QApplication.processEvents()  # Ensure the message box is rendered immediately
+        
+        preprocessing = Processing_Img(self.students)
+        
+        for src_path in video_paths:
+            base_name = os.path.basename(src_path)
+            name_no_ext = os.path.splitext(base_name)[0]
+            try:
+                # Đảm bảo định dạng ID_Name
+                student_id, student_name = name_no_ext.split('_', 1)
+                if not student_name:
+                    raise ValueError("Tên không được để trống")
+            except ValueError as e:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Filename",
+                    f"Bỏ qua '{base_name}': {e}\nĐịnh dạng phải là ID_Name"
+                )
+                continue
+
+            try:
+                df = preprocessing.frame_to_vector(src_path, student_id, student_name)
+                prep_df = pd.concat([prep_df, df], ignore_index=True)
+            except Exception as ex:
+                QMessageBox.warning(
+                    self,
+                    "Error in Processing",
+                    f"Không thể xử lý video '{base_name}': {ex}"
+                )
+                continue
+        
+        # Lưu DataFrame vào tệp CSV
+        if not prep_df.empty:
+            # Gọi API với dữ liệu đã chuyển đổi
+            try:
+                self.API.push_data(prep_df)
+                # Cập nhật dữ liệu JSON
+                self.API.push_json_data(self.students)
+            except Exception as e:
+                QMessageBox.critical(self, "API Error", f"Không thể gửi dữ liệu đến API: {e}")
+        
+        msg_box.setText(f"Video đã được xử lý xong (Done)")
+        QTimer.singleShot(2000, msg_box.accept)
+
 
     def take_attendance(self):
+        self.back_btn.setVisible(True)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.confirm_face_btn.setVisible(False)
@@ -495,15 +572,6 @@ class FaceAttendanceUI(QWidget):
         self.confirm_face_btn.setVisible(True)
         self.retry_face_btn.setVisible(True)
 
-    # def mock_attendance_result(self):
-    #     self.progress_timer.stop()
-    #     self.progress_bar.setValue(100)
-    #     stu = self.attendance.student_data[self.current_student_id]
-    #     self.status_label.setText(f"{stu['name']} (ID: {stu['id']}) - {self.attendance.present_count} / {self.attendance.total_students} students present")
-    #     self.progress_bar.setVisible(False)
-    #     self.confirm_face_btn.setVisible(True)
-    #     self.retry_face_btn.setVisible(True)
-
     def confirm_face(self):
         if not self.current_student_id:
             return
@@ -516,29 +584,13 @@ class FaceAttendanceUI(QWidget):
             f"{self.attendance.student_data[self.current_student_id]['name']} (ID: {self.current_student_id}) - "
             f"{self.attendance.present_count} / {self.attendance.total_students} present"
         )
-        # student = self.attendance.student_data.get(self.attendance.current_student)
-        # if student:
-        #     student["present"] = True
-        #     self.attendance.present_count += 1
-        #     status_text = (
-        #         f"{student['name']} (ID: {student['id']}) - "
-        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-        #     )
-        #     self.status_label.setText(self.format_status_text(status_text))
-        #     self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
-            
-        #     self.update_attendance_list()
-            
-        # self.attendance.current_student += 1
-        # if self.attendance.current_student > len(self.attendance.student_data):
-        #     self.attendance.current_student = 1
-
-        # self.stop_camera()
-        
-        # self.confirm_face_btn.setVisible(False)
-        # self.retry_face_btn.setVisible(False)
-        # self.take_attendance_btn.setVisible(True)
-        # self.register_face_btn.setVisible(True)
+        log_entry = {
+            "student_id": self.current_student_id,
+            "student_name": self.attendance.student_data[self.current_student_id]["name"],
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "status": 1
+        }
+        self.log = pd.concat([self.log, pd.DataFrame([log_entry])], ignore_index=True)
 
     def retry_wrong_face(self):
         # 1. Tạm dừng việc gọi API
@@ -558,111 +610,62 @@ class FaceAttendanceUI(QWidget):
 
         student_id = student_id.strip()
 
-        # 3. Lấy embedding vừa dùng (lưu sẵn trong call_api)
-        #    giả sử bạn đã lưu self._last_embedding = [...] trong call_api()
-        row = self._last_embedding + [int(student_id)]
-        self.embedding_df.loc[len(self.embedding_df)] = row
-
-        # 4. Đánh dấu điểm danh và cập nhật UI
-        self.attendance.mark_present(student_id)
-        self.update_attendance_list()
-        self.status_label.setText(
-            f"✅ Điểm danh sinh viên {student_id} thành công.\n"
-            f"{self.attendance.present_count} / {self.attendance.total_students} present"
-        )
+        # 3. Đánh dấu điểm danh và cập nhật UI
+        if student_id in self.attendance.student_data:
+            # Nếu mã sinh viên hợp lệ, đánh dấu điểm danh
+            self.attendance.mark_present(student_id)
+            self.update_attendance_list()
+            self.status_label.setText(
+                f"✅ Điểm danh sinh viên {student_id} thành công.\n"
+                f"{self.attendance.present_count} / {self.attendance.total_students} present"
+            )
+            log_entry = {
+                "student_id": student_id,
+                "student_name": self.attendance.student_data[student_id]["name"],
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": 0
+            }
+            self.log = pd.concat([self.log, pd.DataFrame([log_entry])], ignore_index=True)
+        else:
+            # Nếu mã sinh viên không hợp lệ, thông báo lỗi bằng message box
+            QMessageBox.warning(
+                self,
+                "Lỗi",
+                f"Mã sinh viên '{student_id}' không hợp lệ. Vui lòng thử lại."
+            )
 
         # 5. Bật lại việc gọi API cho những lần tiếp theo
         self.pause_api = False
-
-    # def retry_wrong_face(self):
-    #         status_text = "Trying again..."
-    #         self.status_label.setText(self.format_status_text(status_text))
-    #         self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;")
-            
-    #         self.progress_bar.setVisible(True)
-    #         self.progress_bar.setValue(0)
-    #         self.progress_value = 0
-    #         self.progress_timer = QTimer(self)
-    #         self.progress_timer.timeout.connect(self.update_progress)
-    #         self.progress_timer.start(30)
-            
-    #         self.attendance.current_student += 1
-    #         if self.attendance.current_student > len(self.attendance.student_data):
-    #             self.attendance.current_student = 1
-                
-    #         QTimer.singleShot(1000, self.finish_retry)
 
     def finish_retry(self):
         self.progress_timer.stop()
         self.progress_bar.setValue(100)
         self.progress_bar.setVisible(False)
-        
-        # student = self.attendance.student_data.get(self.attendance.current_student)
-        # if student:
-        #     status_text = (
-        #         f"{student['name']} (ID: {student['id']}) - "
-        #         f"{self.attendance.present_count} / {self.attendance.total_students} students present"
-        #     )
-        #     self.status_label.setText(self.format_status_text(status_text))
-        #     self.status_label.setStyleSheet("color: #28A745; font-weight: bold; padding: 8px; margin: 5px 0;")
-        
         self.confirm_face_btn.setVisible(True)
         self.retry_face_btn.setVisible(True)
         self.take_attendance_btn.setVisible(False)
         self.register_face_btn.setVisible(False)
-
-    def register_face(self):
-        if not self.new_student_info:
-            QMessageBox.warning(self, "Error", "Missing student info.")
-            return
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.take_attendance_btn.setVisible(False)
-        self.register_face_btn.setVisible(False)
-        self.start_camera()
-        self.progress_timer = QTimer(self)
-        self.progress_timer.timeout.connect(lambda: self.progress_bar.setValue(self.progress_bar.value()+1))
-        self.progress_timer.start(30)
-        self.check_timer = QTimer(self)
-        self.check_timer.timeout.connect(lambda: None)
-        self.check_timer.start(500)
-        QTimer.singleShot(3000, self.finish_register)
-
-    def finish_register(self):
-        self.progress_timer.stop()
-        self.check_timer.stop()
-        self.progress_bar.setVisible(False)
-        if self.face_detected:
-            self.attendance.add_student(self.new_student_info['name'], self.new_student_info['id'])
-            self.status_label.setText(f"Registered {self.new_student_info['name']}. Total: {self.attendance.total_students}")
-            QMessageBox.information(self, "Success", f"{self.new_student_info['name']} registered.")
-            self.update_attendance_list()
-        else:
-            QMessageBox.warning(self, "Failed", "No face detected.")
-            self.status_label.setText("Registration failed.")
-        self.new_student_info = None
-        self.take_attendance_btn.setVisible(True)
-        self.register_face_btn.setVisible(True)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_font_sizes()
     
     def closeEvent(self, event):
-        # 1. Lưu DataFrame embeddings ra file CSV
-        try:
-            # bạn có thể đổi đường dẫn hoặc filename tuỳ ý
-            self.embedding_df.to_csv("collected_embeddings.csv", index=False)
-            print("Saved embeddings to collected_embeddings.csv")
-        except Exception as e:
-            print("Failed to save embeddings:", e)
-
-        # 2. Dừng camera nếu còn mở
         if self.cap:
             self.stop_camera()
+        
+        # Hiển thị thanh loading khi gửi log
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Uploading Log")
+        msg_box.setText("Đang gửi dữ liệu điểm danh lên server...\n(Vui lòng đợi trong giây lát)")
+        msg_box.setStandardButtons(QMessageBox.NoButton)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStyleSheet("QLabel{min-width:300px; min-height:60px; font-size:14px;}")
+        msg_box.show()
+        QApplication.processEvents()  # Đảm bảo message box hiển thị ngay
 
+        self.API.push_log(self.log)
+
+        msg_box.setText("Đã gửi dữ liệu thành công! (Done)")
+        QTimer.singleShot(2000, msg_box.accept)
         event.accept()
-    
-    # def closeEvent(self, event):
-    #     if self.cap: self.stop_camera()
-    #     event.accept()

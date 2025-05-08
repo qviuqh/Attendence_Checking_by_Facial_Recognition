@@ -70,7 +70,6 @@ class Processing_Img():
             print(f"Đang xử lý video {video_file} (FPS gốc: {actual_fps})")
             
             # Khởi tạo biến đếm cho khung hình
-            counter = 0
             frame_count = 0
             
             # Duyệt qua các khung hình
@@ -89,16 +88,15 @@ class Processing_Img():
                         frame_count += 1
                         continue
                     embedding = pd.Series(embedding)
-                    embedding = pd.concat([embedding, pd.Series([student_id, student_name])], ignore_index=True)
+                    embedding = pd.concat([embedding, pd.Series([student_id])], ignore_index=True)
                     df.loc[index] = embedding
                     index += 1
-                    counter += 1
                 frame_count += 1
             
             # Giải phóng đối tượng VideoCapture
             cap.release()
             # In thông báo kết quả cho video hiện tại
-            print(f"Đã trích xuất {counter} khung hình từ video của sinh viên {student_id} - {student_name}")
+            print(f"Đã trích xuất khung hình từ video của sinh viên {student_id} - {student_name}")
             self.student[student_id] = student_name  # Thêm student_id và student_name vào dictionary
         print("Hoàn tất xử lý tất cả video.")
         return df

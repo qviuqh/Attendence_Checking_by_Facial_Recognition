@@ -1,0 +1,44 @@
+{
+  "os": "Windows-10-10.0.26100-SP0",
+  "python": "CPython 3.10.16",
+  "startedAt": "2025-05-08T16:06:47.320435Z",
+  "args": [
+    "api.main:app",
+    "--reload"
+  ],
+  "program": "<python with no main file>",
+  "git": {
+    "remote": "https://github.com/qviuqh/Attendence_Checking_by_Facial_Recognition.git",
+    "commit": "1f9d7a0612863eae91312e29d7bef454c263c1a2"
+  },
+  "email": "thanvinh164@gmail.com",
+  "root": "D:\\Documents\\Text Book\\3\\ML Ops\\Final Project\\Attendence_Checking_by_Facial_Recognition",
+  "host": "LAPTOP-9L2S1347",
+  "executable": "C:\\Users\\pv\\anaconda3\\envs\\face_env\\python.exe",
+  "cpu_count": 8,
+  "cpu_count_logical": 16,
+  "gpu": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "314571747328",
+      "used": "120437432320"
+    }
+  },
+  "memory": {
+    "total": "7781593088"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 16
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "memoryTotal": "4294967296",
+      "cudaCores": 2560,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.7"
+}

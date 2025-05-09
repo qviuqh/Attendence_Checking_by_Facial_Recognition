@@ -15,31 +15,53 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: 'latest'
-          auto-update-conda: true
-          environment-file: environment.yml  # Your Conda environment file
-          activate-environment: false  # Don't auto-activate the environment
+          auto-update-conda: false  # Disable auto-update to avoid potential version issues
+          environment-file: environment.yml  # Specify your environment file if you have one
+          activate-environment: false  # We will manually activate the environment later
 
       - name: 📦 Install dependencies
         run: |
+          echo "Checking Conda Info"
+          conda info
+          echo "Listing Conda Environments"
+          conda env list
           conda install --yes --file requirements.txt || conda install wandb pandas
           conda install jupyter nbconvert
 
+      - name: 🚀 Activate Conda Environment
+        run: |
+          echo "Activating Conda environment"
+          source $(conda info --base)/etc/profile.d/conda.sh
+          conda activate face_env
+
       - name: 🚀 Convert 2. Data_segregation.ipynb to Python script
-        run: conda run -n face_env jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
+        run: |
+          conda activate face_env
+          jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
 
       - name: 🚀 Convert 3. Training_model.ipynb to Python script
-        run: conda run -n face_env jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
+        run: |
+          conda activate face_env
+          jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
 
       - name: 🚀 Convert 4. Testing.ipynb to Python script
-        run: conda run -n face_env jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
+        run: |
+          conda activate face_env
+          jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
 
       - name: 🚀 Run 2. Data_segregation.py
-        run: conda run -n face_env python 2_data_segregation.py
+        run: |
+          conda activate face_env
+          python 2_data_segregation.py
 
       - name: 🚀 Run 3. Training_model.py
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-        run: conda run -n face_env python 3_training_model.py
+        run: |
+          conda activate face_env
+          python 3_training_model.py
 
       - name: 🚀 Run 4. Testing.py
-        run: conda run -n face_env python 4_testing.py
+        run: |
+          conda activate face_env
+          python 4_testing.py

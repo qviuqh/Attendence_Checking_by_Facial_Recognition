@@ -11,32 +11,35 @@ jobs:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+      - name: 🐍 Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: '3.10'
+          miniconda-version: 'latest'
+          auto-update-conda: true
+          environment-file: environment.yml  # Your Conda environment file
+          activate-environment: false  # Don't auto-activate the environment
 
       - name: 📦 Install dependencies
         run: |
-          pip install -r requirements.txt || pip install wandb || pip install pandas
-          pip install jupyter nbconvert
+          conda install --yes --file requirements.txt || conda install wandb pandas
+          conda install jupyter nbconvert
 
       - name: 🚀 Convert 2. Data_segregation.ipynb to Python script
-        run: jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
+        run: conda run -n face_env jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
 
       - name: 🚀 Convert 3. Training_model.ipynb to Python script
-        run: jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
+        run: conda run -n face_env jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
 
       - name: 🚀 Convert 4. Testing.ipynb to Python script
-        run: jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
+        run: conda run -n face_env jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
 
       - name: 🚀 Run 2. Data_segregation.py
-        run: python 2_data_segregation.py
+        run: conda run -n face_env python 2_data_segregation.py
 
       - name: 🚀 Run 3. Training_model.py
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-        run: python 3_training_model.py
+        run: conda run -n face_env python 3_training_model.py
 
       - name: 🚀 Run 4. Testing.py
-        run: python 4_testing.py
+        run: conda run -n face_env python 4_testing.py

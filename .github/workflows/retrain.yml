@@ -21,13 +21,22 @@ jobs:
           pip install -r requirements.txt || pip install wandb || pip install pandas
           pip install jupyter nbconvert
 
-      - name: 🚀 Run 2. Data_segregation.ipynb
-        run: jupyter nbconvert --to notebook --execute "2. Data_segregation.ipynb" --output output-2.ipynb
+      - name: 🚀 Convert 2. Data_segregation.ipynb to Python script
+        run: jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
 
-      - name: 🚀 Run 3. Training_model.ipynb
+      - name: 🚀 Convert 3. Training_model.ipynb to Python script
+        run: jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
+
+      - name: 🚀 Convert 4. Testing.ipynb to Python script
+        run: jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
+
+      - name: 🚀 Run 2. Data_segregation.py
+        run: python 2_data_segregation.py
+
+      - name: 🚀 Run 3. Training_model.py
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-        run: jupyter nbconvert --to notebook --execute "3. Training_model.ipynb" --output output-3.ipynb
+        run: python 3_training_model.py
 
-      - name: 🚀 Run 4. Testing.ipynb
-        run: jupyter nbconvert --to notebook --execute "4. Testing.ipynb" --output output-4.ipynb
+      - name: 🚀 Run 4. Testing.py
+        run: python 4_testing.py

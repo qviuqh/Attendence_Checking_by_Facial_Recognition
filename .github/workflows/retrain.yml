@@ -1,25 +1,31 @@
 name: Full Retraining Pipeline
 
+# Controls when the workflow will run
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering of the workflow
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   retrain:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v3
+      # Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
 
-      - name: 🐍 Setup Miniconda
+      # Set up Miniconda
+      - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: 'latest'
-          auto-update-conda: false  # Disable auto-update to avoid potential version issues
-          environment-file: environment.yml  # Specify your environment file if you have one
+          auto-update-conda: false  # Prevents auto-updating Conda
+          environment-file: environment.yml  # Specify your environment file
           activate-environment: false  # We will manually activate the environment later
 
-      - name: 📦 Install dependencies
+      # Install dependencies
+      - name: Install dependencies
         run: |
           echo "Checking Conda Info"
           conda info
@@ -28,40 +34,43 @@ jobs:
           conda install --yes --file requirements.txt || conda install wandb pandas
           conda install jupyter nbconvert
 
-      - name: 🚀 Activate Conda Environment
+      # Activate Conda environment
+      - name: Activate Conda Environment
         run: |
           echo "Activating Conda environment"
           source $(conda info --base)/etc/profile.d/conda.sh
           conda activate face_env
 
-      - name: 🚀 Convert 2. Data_segregation.ipynb to Python script
+      # Convert notebooks to Python scripts
+      - name: Convert 2. Data_segregation.ipynb to Python script
         run: |
           conda activate face_env
           jupyter nbconvert --to python "2. Data_segregation.ipynb" --output "2_data_segregation.py"
 
-      - name: 🚀 Convert 3. Training_model.ipynb to Python script
+      - name: Convert 3. Training_model.ipynb to Python script
         run: |
           conda activate face_env
           jupyter nbconvert --to python "3. Training_model.ipynb" --output "3_training_model.py"
 
-      - name: 🚀 Convert 4. Testing.ipynb to Python script
+      - name: Convert 4. Testing.ipynb to Python script
         run: |
           conda activate face_env
           jupyter nbconvert --to python "4. Testing.ipynb" --output "4_testing.py"
 
-      - name: 🚀 Run 2. Data_segregation.py
+      # Run the Python scripts
+      - name: Run 2. Data_segregation.py
         run: |
           conda activate face_env
           python 2_data_segregation.py
 
-      - name: 🚀 Run 3. Training_model.py
+      - name: Run 3. Training_model.py
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           conda activate face_env
           python 3_training_model.py
 
-      - name: 🚀 Run 4. Testing.py
+      - name: Run 4. Testing.py
         run: |
           conda activate face_env
           python 4_testing.py

@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QProgressBar, QMessageBox, QSizePolicy,
     QSplitter, QListWidget, QListWidgetItem, QInputDialog, QFileDialog
 )
-from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor, QIcon
+from PyQt5.QtGui import QImage, QPixmap, QFont, QPalette, QColor, QIcon, QMovie
 from PyQt5.QtCore import Qt, QTimer, QSize
 
 from api_client import APIClient
@@ -63,6 +63,8 @@ class FaceAttendanceUI(QWidget):
         self.attendance_list_visible = False
         self.base_font_size = 12
 
+        self.show_idle_animation()
+        
         self.apply_color_scheme()
         self.init_ui()
 
@@ -86,14 +88,27 @@ class FaceAttendanceUI(QWidget):
             QSplitter::handle { background-color: #6C757D; width: 2px; }
         """)
 
+
     def init_ui(self):
         self.setWindowTitle("Face Recognition Attendance System")
         self.setMinimumSize(800, 800) 
 
-        self.back_btn = QPushButton()
-        self.back_btn.setIcon(QIcon(r"icon/back_btn.png"))
-        self.back_btn.setIconSize(QSize(28, 28))
-        self.back_btn.setFixedSize(36, 36)
+        # Main layout with minimal margins to maximize space
+        self.main_layout = QHBoxLayout()
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Create the overall layout
+        self.root_layout = QVBoxLayout()
+        self.root_layout.setContentsMargins(0, 0, 0, 0)  # No margins
+        self.root_layout.setSpacing(0)  # No spacing
+        self.root_layout.addLayout(self.main_layout)
+
+        # Create back button with no background, border, or shape — icon only
+        self.back_btn = QPushButton(self)
+        self.back_btn.setIcon(QIcon("icon/back_btn.png"))  # Use your PNG icon here
+        self.back_btn.setIconSize(QSize(28, 28))  # Set icon size as needed
+        self.back_btn.setFixedSize(36, 36)# Slightly larger than icon for click area
         self.back_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -101,16 +116,11 @@ class FaceAttendanceUI(QWidget):
                 padding: 0px;
             }
             QPushButton:hover {
-                background-color: rgba(0, 0, 0, 0.05);
+                background-color: rgba(0, 0, 0, 0.05);  /* Optional hover effect */
             }
         """)
-        self.back_btn.clicked.connect(self.back_to_main)
-        self.back_btn.setVisible(False)
-        # Main layout
-        self.main_layout = QHBoxLayout()
-        self.main_layout.setSpacing(20)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
-        
+        self.back_btn.move(27, 20)
+
         # Left side (camera) layout
         self.left_layout = QVBoxLayout()
         self.left_layout.setAlignment(Qt.AlignCenter)
@@ -149,17 +159,41 @@ class FaceAttendanceUI(QWidget):
         self.title_label.setStyleSheet("color: #007BFF; font-weight: bold;")
         self.left_layout.addWidget(self.title_label)
 
-        # Camera preview area with border
-        self.image_label = QLabel(self)
+        # Create a container for camera preview and footer
+        self.camera_container = QWidget()
+        self.camera_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.camera_container.setMinimumSize(300, 300)
+        self.camera_container.setStyleSheet("border: none; border-radius: 8px; background-color: white;")
+        
+        # Create a layout for the container
+        self.camera_layout = QVBoxLayout(self.camera_container)
+        self.camera_layout.setContentsMargins(5, 5, 5, 5)
+        self.camera_layout.setSpacing(0)
+        
+        # Camera preview area
+        self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.image_label.setMinimumSize(300, 300)
-        self.image_label.setStyleSheet("border: 2px solid #6C757D; border-radius: 8px; padding: 5px; background-color: white;")
-        self.left_layout.addWidget(self.image_label, stretch=1)
+        self.camera_layout.addWidget(self.image_label, stretch=1)
+        
+        # Add "Made by ITEA" footer inside the camera container
+        self.footer_label = QLabel("Made by ITEA")
+        self.footer_label.setAlignment(Qt.AlignCenter)
+        self.footer_label.setStyleSheet("""
+            color: #6C757D; 
+            font-weight: 500;
+            padding: 5px 0;
+            margin: 0;
+            font-size: 14px;
+            background-color: transparent;
+        """)
+        self.camera_layout.addWidget(self.footer_label)
+        
+        # Add the container to the main layout
+        self.left_layout.addWidget(self.camera_container, stretch=1)
 
         # Status label with styled appearance
-        num_students = len(self.attendance.student_data)
-        self.status_label = QLabel("0 / {} students present".format(num_students))
+        self.status_label = QLabel("Welcome to Face Recognition Attendance System")
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setWordWrap(True)
         self.status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -245,31 +279,71 @@ class FaceAttendanceUI(QWidget):
         # Initially hide some buttons
         self.confirm_face_btn.setVisible(False)
         self.retry_face_btn.setVisible(False)
-
         self.left_layout.addLayout(self.button_layout)
         
         # Add the show attendance list button in a separate layout at the bottom
         self.show_list_layout = QHBoxLayout()
         self.show_list_layout.addWidget(self.show_attendance_list_btn)
         self.left_layout.addLayout(self.show_list_layout)
-        
+
         # Setup the attendance list on the right side
         self.setup_attendance_list()
         
-        self.setLayout(self.main_layout)
-
+        # Set the root layout as the widget's layout
+        self.setLayout(self.root_layout)
+        
+        # We need to make sure the back button stays at the correct position
+        # even when the window is resized
+        self.back_btn.raise_()
+        # Update back button position to align with camera frame
+        #self.back_btn.move(20, 20)  # Position to align with camera window (inset from edge)
+        self.back_btn.setVisible(False)  # Initially hidden
         # Connect signals
         self.take_attendance_btn.clicked.connect(self.take_attendance)
         self.register_face_btn.clicked.connect(self.show_registration_dialog)
         self.confirm_face_btn.clicked.connect(self.confirm_face)
         self.retry_face_btn.clicked.connect(self.retry_wrong_face)
         self.show_attendance_list_btn.clicked.connect(self.toggle_attendance_list)
+        self.back_btn.clicked.connect(self.back_to_main)
+
+        self.setup_idle_animation()
 
         # Set initial font sizes
         self.update_font_sizes()
         
         # Initially update the attendance list
         self.update_attendance_list()
+
+    def setup_idle_animation(self):
+        """Set up the GIF animation for when the camera is not active"""
+        self.idle_movie = QMovie("icon/9BUtul0Vz2.gif")  # Replace with your GIF path
+        self.idle_movie.setScaledSize(QSize(300, 300))  # Set appropriate size
+        self.image_label.setMovie(self.idle_movie)
+        self.idle_movie.start()
+        
+    def show_idle_animation(self):
+        """Display the GIF animation"""
+        if hasattr(self, 'idle_movie'):
+            self.image_label.setMovie(self.idle_movie)
+            self.idle_movie.start()
+            
+    def hide_idle_animation(self):
+        """Stop the GIF animation when switching to camera"""
+        if hasattr(self, 'idle_movie'):
+            self.idle_movie.stop()
+
+    def back_to_main(self):
+        self.image_label.clear()  # Clear the camera feed display
+        self.take_attendance_btn.setVisible(True)
+        self.register_face_btn.setVisible(True)
+        self.confirm_face_btn.setVisible(False)
+        self.retry_face_btn.setVisible(False)
+        self.back_btn.setVisible(False)
+        self.progress_bar.setVisible(False)
+        # Reset status label to initial state
+        self.status_label.setText(f"{self.attendance.present_count} / {self.attendance.total_students} students present")
+        self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;") 
+        self.stop_camera()
 
     def setup_attendance_list(self):
         self.attendance_title = QLabel("Student Attendance Status")
@@ -295,18 +369,18 @@ class FaceAttendanceUI(QWidget):
             self.splitter.setSizes([int(self.width()*0.6), int(self.width()*0.4)])
             self.update_attendance_list()
 
-    def back_to_main(self):
-        self.stop_camera()
-        self.image_label.clear()  # Clear the camera feed display
-        self.take_attendance_btn.setVisible(True)
-        self.register_face_btn.setVisible(True)
-        self.confirm_face_btn.setVisible(False)
-        self.retry_face_btn.setVisible(False)
-        self.back_btn.setVisible(False)
-        self.progress_bar.setVisible(False)
-        # Reset status label to initial state
-        self.status_label.setText(f"{self.attendance.present_count} / {self.attendance.total_students} students present")
-        self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;") 
+    # def back_to_main(self):
+    #     self.stop_camera()
+    #     self.image_label.clear()  # Clear the camera feed display
+    #     self.take_attendance_btn.setVisible(True)
+    #     self.register_face_btn.setVisible(True)
+    #     self.confirm_face_btn.setVisible(False)
+    #     self.retry_face_btn.setVisible(False)
+    #     # self.back_btn.setVisible(False)
+    #     self.progress_bar.setVisible(False)
+    #     # Reset status label to initial state
+    #     self.status_label.setText(f"{self.attendance.present_count} / {self.attendance.total_students} students present")
+    #     self.status_label.setStyleSheet("color: #6C757D; font-weight: bold; padding: 8px; margin: 5px 0;") 
 
     def update_attendance_list(self):
         if not self.attendance_list_visible:
@@ -345,6 +419,7 @@ class FaceAttendanceUI(QWidget):
         if not self.cap.isOpened():
             QMessageBox.critical(self, "Camera Error", "Unable to access the camera.")
             return
+        self.hide_idle_animation()
         self.timer.start(30)
 
     def stop_camera(self):
@@ -353,6 +428,7 @@ class FaceAttendanceUI(QWidget):
             self.cap.release()
             self.cap = None
             self.image_label.clear()
+            self.show_idle_animation()
 
     def detect_and_draw_faces(self, frame):
         faces = self.detector.detect_faces(frame)
@@ -533,9 +609,8 @@ class FaceAttendanceUI(QWidget):
         msg_box.setText(f"Video đã được xử lý xong (Done)")
         QTimer.singleShot(2000, msg_box.accept)
 
-
     def take_attendance(self):
-        self.back_btn.setVisible(True)
+        # self.back_btn.setVisible(True)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.confirm_face_btn.setVisible(False)
@@ -548,6 +623,8 @@ class FaceAttendanceUI(QWidget):
         QTimer.singleShot(3000, self.mock_attendance_result)
         self.take_attendance_btn.setVisible(False)
         self.register_face_btn.setVisible(False)
+        self.footer_label.setVisible(False)
+        self.back_btn.setVisible(True)
 
     def update_progress(self):
         """Update progress bar animation"""

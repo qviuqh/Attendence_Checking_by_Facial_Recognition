@@ -134,6 +134,31 @@ Create a `.env` file and add your W&B API key:
 ```bash
 WANDB_API_KEY=your_wandb_key_here
 ```
+## To use Dashboard App 
+
+### 1. Go to Website Dashboard Folder 
+
+```bash
+cd path/to/Attendence_Checking_by_Facial_Recognition/website_dashboard 
+```
+
+### 2. Install requirements 
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure wandb
+
+Create a `.env` file and add your W&B API key:
+
+```bash
+echo "WANDB_API_KEY=your_actual_key_here" > .env
+```
+
+### 4. Run Application 
+```bash
+python app.py 
+```
 
 ---
 

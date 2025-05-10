@@ -183,7 +183,7 @@ Key Features:
 
 _Workflow file:_
 ```bash
-.github/workflows/.yml
+.github/workflows/main.yml
 ```
 
 ---

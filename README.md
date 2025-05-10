@@ -183,7 +183,7 @@ Key Features:
 
 _Workflow file:_
 ```bash
-.github/workflows/train_and_deploy.yaml
+.github/workflows/.yml
 ```
 
 ---

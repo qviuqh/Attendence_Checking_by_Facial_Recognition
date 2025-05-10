@@ -188,18 +188,32 @@ _Workflow file:_
 
 ---
 
-## 🧭 Future Roadmap
+## 🧭 Next Step
 
-- [ ] Dockerize API and desktop app
-- [ ] Add student registration via UI
-- [ ] Add real-time attendance dashboard
-- [ ] Deploy API to cloud (Render/AWS/GCP)
+## Short-Term Orientation
 
+### 1. Integration with Learning Management Systems (LMS)
+In the initial phase, the project will focus on integrating with popular LMS platforms such as Moodle or Google Classroom, enabling automatic synchronization of attendance data with the course management systems.
+
+### 2. Improving Facial Recognition Accuracy
+The system will first be optimized to operate effectively under common classroom lighting conditions. The goal is to ensure accurate facial recognition in typical classroom scenarios.
+
+### 3. Supporting Attendance for a Single Class
+Basic functionalities will be developed to support attendance for a single class. This includes facial recognition-based check-in, attendance list display, and storing attendance status.
+
+### 4. Developing a Mobile Interface
+A mobile-friendly version of the application will be created so that students can mark their attendance using their smartphones, particularly suited for online or hybrid learning environments.
+
+## Long-Term Orientation
+
+### 1. Expanding Support for Multiple Classes and Users
+In the long term, the system will be extended to support multiple classes and different user roles, such as instructors, administrators, and students. This will allow the system to be used in large-scale or multi-campus institutions.
+
+### 2. Real-Time Attendance Data Analysis and Reporting
+The system will include real-time data analysis and reporting features, allowing instructors and administrators to track attendance trends, identify students at risk of chronic absenteeism, and take timely action.
+
+### 3. Applying Machine Learning to Predict Student Behavior
+Machine learning algorithms will be used to analyze attendance data and predict student engagement patterns, enabling personalized interventions to enhance learning outcomes.
 ---
 
-## 📄 References
 
-- [FaceNet: A Unified Embedding for Face Recognition](https://arxiv.org/abs/1503.03832)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Weights & Biases](https://wandb.ai)
-- Inspired by: [Credit Risk MLOps](https://github.com/Morsinaldo/credit_risk_mlops)

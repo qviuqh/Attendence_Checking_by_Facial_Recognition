@@ -36,7 +36,7 @@ The main objective of this project is to automate the attendance process, saving
 ---
 ### User Flow 
 
-![System Architecture](Readme_images/UF.drawio.png)
+![System Architecture](Readme_images/UFlow.png)
 
 ---
 

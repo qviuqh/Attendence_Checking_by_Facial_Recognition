@@ -47,40 +47,57 @@ This project develops a facial recognition-based attendance system, integrating 
 ## 📁 Folder Structure
 
 ```bash
-Attendance_Checking_by_Facial_Recognition/
+Attendence_Checking_by_Facial_Recognition/  # Main project folder
 ├── .github/
-│   └── workflows/                    # GitHub Actions CI/CD workflows.
-├── UI/                                # UI source code and components.
-│   ├── icon/                          # UI icons.
-│   ├── src/                           # UI source code.
-│   ├── api_client.py                  # Backend API client.
-│   ├── attendance_manager.py          # Manages attendance logic.
-│   ├── dialogs.py                     # UI dialog windows.
-│   ├── face_detector.py               # Face detection logic.
-│   ├── main_window.py                 # Main UI window.
-│   ├── test.ipynb                     # Jupyter notebook for UI testing.
-│   └── ui.py                          # Core UI layout and events.
-├── api/                                # FastAPI source code.
-│   └── main.py                        # API endpoints.
-├── data/                               # Input images, embeddings, datasets.
-│   ├── images/                        # Face images used for training/testing.
-│   └── embeddings/                    # Face embeddings for recognition.
-├── model/                              # Trained model artifacts.
-│   ├── model_export/                  # Folder for exported models.
-│   └── retrain/                       # Model retraining scripts.
-│       ├── 2_Data_segregation.py      # Data segregation for retraining.
-│       ├── 3_Training_model.py        # Model training script.
-│       └── 4_Testing.py               # Model testing script.
-├── notebooks/                          # Jupyter notebooks for training, logging, and testing.
-│   ├── 1. ETL_process.ipynb            # ETL process for data preparation.
-│   ├── 2. Data_segregation.ipynb       # Data segregation for training/testing.
-│   ├── 3. Training_model.ipynb         # Model training.
-│   └── 4. Testing.ipynb                # Model testing.
-├── artifacts/                         # Stores model artifacts and other resources.
-├── log.csv                             # Attendance logs.
-├── requirements.txt                   # Project dependencies.
-├── Procfile                            # For Heroku deployment (optional).
-└── README.md                           # Project overview and setup instructions.
+│   └── workflows/
+│       └── main.yml                      # GitHub Actions CI/CD workflow
+├── UI/                                   # PyQt5-based user interface
+│   ├── icon/                             # Icons used in the UI
+│   ├── src/                              # Additional UI resources or modules
+│   ├── api_client.py                     # Handles API communication from UI
+│   ├── attendance_manager.py             # Logic to manage attendance states
+│   ├── dialogs.py                        # Dialog windows (pop-ups, prompts)
+│   ├── face_detector.py                  # Face detection module
+│   ├── main_window.py                    # Main window logic
+│   ├── test.ipynb                        # UI testing notebook
+│   └── ui.py                             # UI layout definitions
+├── api/
+│   └── main.py                           # Backend API for face recognition
+├── artifacts/                            # Saved models or intermediary data
+├── data/                                 # Raw and processed datasets
+├── log.csv                               # Log file for attendance
+├── main.ipynb                            # Main demo or workflow notebook
+├── model_export                          # Exported face recognition models
+├── README.md                             # Project documentation
+├── requirements.txt                      # Python dependencies
+├── retrain/                              # Scripts to retrain the model
+│   ├── 2_Data_segregation.py             # Splits data for training/testing
+│   ├── 3_Training_model.py               # Model training script
+│   └── 4_Testing.py                      # Model evaluation script
+├── src/                                  # Core ML utilities
+│   ├── __pycache__/                      # Compiled Python cache
+│   ├── _init_.py                         # Package initialization
+│   ├── feature_engineering.py            # Feature extraction logic
+│   ├── preprocessing.py                  # Data cleaning & preprocessing
+│   └── utils.py                          # Utility/helper functions
+├── test.ipynb                            # General testing notebook
+├── testing.ipynb                         # Additional model or feature tests
+├── wandb/                                # Weights & Biases experiment logs
+├── website_dashboard/                    # Web dashboard for admins
+│   ├── api/                              # Backend APIs for dashboard
+│   ├── artifacts/                        # Saved results for visualization
+│   ├── data/                             # Dataset used in dashboard
+│   ├── static/                           # Static files (CSS, JS, images)
+│   ├── templates/                        # HTML templates (Jinja2)
+│   ├── wandb/                            # W&B logs for dashboard
+│   ├── .gitignore                        # Git ignore rules
+│   ├── app.py                            # Flask app entry point
+│   ├── config.py                         # Configuration settings
+│   └── requirements.txt                  # Dashboard-specific dependencies
+├── 1. ETL_process.ipynb                  # Extract, Transform, Load process
+├── 2. Data_segregation.ipynb             # Notebook for dataset splitting
+├── 3. Training_model.ipynb               # Notebook for training ML model
+└── 4. Testing.ipynb                      # Notebook for testing model accuracy
 
 ```
 ---

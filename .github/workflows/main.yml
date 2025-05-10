@@ -24,10 +24,6 @@ jobs:
           pip install -r requirements.txt
           pip install nbconvert wandb  # Add wandb installation here
 
-      - name: Login to W&B
-        run: |
-          wandb login $env:WANDB_API_KEY 
-
       - name: Convert Jupyter Notebooks to Python scripts
         run: |
           jupyter nbconvert --to python "2. Data_segregation.ipynb"

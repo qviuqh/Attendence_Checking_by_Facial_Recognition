@@ -176,10 +176,13 @@ This section explains the user flow and interactions with the desktop attendance
 
 _Describe your automation here:_
 
-This project uses **GitHub Actions** to:
-- Automatically retrain the model when new data is available
-- Deploy updated APIs
-- Sync artifacts from Weights & Biases
+This project uses **GitHub Actions** to: automatically retrain a machine learning model whenever new video data is uploaded. The process includes preprocessing video data, generating embeddings, and uploading both embeddings and the updated model to Weights & Biases (WandB).
+
+Key Features:
+- Fully automated retraining via GitHub Actions triggered by a repository_dispatch event from a backend system.
+- Sequential execution of data segregation, training, and testing scripts.
+- Secure WandB integration using GitHub Secrets.
+- Resulting model artifacts (e.g., .pkl files) are logged and stored in WandB.
 
 _Workflow file:_
 ```bash

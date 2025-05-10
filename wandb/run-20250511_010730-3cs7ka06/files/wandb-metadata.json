@@ -1,0 +1,18 @@
+{
+  "os": "Windows-11-10.0.22631-SP0",
+  "python": "CPython 3.12.8",
+  "startedAt": "2025-05-10T18:07:30.531362Z",
+  "args": [
+    "api.main:app",
+    "--reload"
+  ],
+  "program": "<python with no main file>",
+  "git": {
+    "remote": "https://github.com/qviuqh/Attendence_Checking_by_Facial_Recognition",
+    "commit": "f71fb758702c8e43e30d1a3e88d70a3dd4499181"
+  },
+  "email": "thanvinh164@gmail.com",
+  "root": "C:\\Users\\PC\\Downloads\\Attendence_Checking_by_Facial_Recognition",
+  "host": "EDIN",
+  "executable": "C:\\Users\\PC\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
+}

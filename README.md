@@ -34,9 +34,23 @@ The main objective of this project is to automate the attendance process, saving
 ## 🏗️ Architecture
 
 ---
-### User Flow 
+### Model Architecture 
 
-![System Architecture](Readme_images/UFlow.png)
+![System Architecture](Readme_images/model_architecture.png)
+
+---
+
+---
+### Take Attendance Function Arichitecture 
+
+![System Architecture](Readme_images/take_attendance_architecture.jpg)
+
+---
+
+---
+### Register New Face Function Arichitecture
+
+![System Architecture](Readme_images/regis_new_face_architecture.jpg)
 
 ---
 

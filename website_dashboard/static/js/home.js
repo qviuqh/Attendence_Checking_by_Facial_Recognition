@@ -45,16 +45,16 @@ function initializeAttendanceTable() {
                 data: 'timestamp',
                 render: function(data) {
                     const date = new Date(data);
-                    return date.toLocaleString('vi-VN');
+                    return date.toLocaleString('en-US');
                 }
             },
             { 
                 data: 'status',
                 render: function(data) {
                     if (data == 1) {
-                        return '<span class="status-badge status-success">Thành công</span>';
+                        return '<span class="status-badge status-success">Success</span>';
                     } else {
-                        return '<span class="status-badge status-failure">Thất bại</span>';
+                        return '<span class="status-badge status-failure">Failed</span>';
                     }
                 }
             }
@@ -62,7 +62,7 @@ function initializeAttendanceTable() {
         order: [[2, 'desc']], // Sort by timestamp desc
         pageLength: 10,
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/en.json'
         },
         responsive: true
     });
@@ -85,7 +85,7 @@ function loadSummaryData() {
         })
         .catch(error => {
             console.error('Error loading summary data:', error);
-            showErrorAlert('Không thể tải dữ liệu tổng quan');
+            showErrorAlert('Unable to load overview data');
         });
 }
 
@@ -107,14 +107,14 @@ function loadDailyAttendanceChart() {
                 // Create datasets
                 const datasets = [
                     {
-                        label: 'Thành công',
+                        label: 'Success',
                         backgroundColor: chartColors.successLight,
                         borderColor: chartColors.success,
                         borderWidth: 2,
                         data: successful
                     },
                     {
-                        label: 'Thất bại',
+                        label: 'Failed',
                         backgroundColor: chartColors.dangerLight,
                         borderColor: chartColors.danger,
                         borderWidth: 2,
@@ -128,14 +128,14 @@ function loadDailyAttendanceChart() {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Ngày'
+                                text: 'Date'
                             }
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Số lượng'
+                                text: 'Count'
                             }
                         }
                     }
@@ -144,7 +144,7 @@ function loadDailyAttendanceChart() {
         })
         .catch(error => {
             console.error('Error loading daily attendance chart:', error);
-            showErrorAlert('Không thể tải biểu đồ điểm danh theo ngày');
+            showErrorAlert('Unable to load daily attendance chart');
         });
 }
 
@@ -178,7 +178,7 @@ function loadStudentSuccessRateChart() {
                 // Create datasets
                 const datasets = [
                     {
-                        label: 'Tỷ lệ thành công (%)',
+                        label: 'Success rate (%)',
                         backgroundColor: backgroundColors,
                         borderColor: borderColors,
                         borderWidth: 2,
@@ -192,7 +192,7 @@ function loadStudentSuccessRateChart() {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Sinh viên'
+                                text: 'Students'
                             }
                         },
                         y: {
@@ -200,7 +200,7 @@ function loadStudentSuccessRateChart() {
                             max: 100,
                             title: {
                                 display: true,
-                                text: 'Tỷ lệ (%)'
+                                text: 'Rate (%)'
                             }
                         }
                     }
@@ -209,7 +209,7 @@ function loadStudentSuccessRateChart() {
         })
         .catch(error => {
             console.error('Error loading student success rate chart:', error);
-            showErrorAlert('Không thể tải biểu đồ tỷ lệ thành công theo sinh viên');
+            showErrorAlert('Unable to load student success rate chart');
         });
 }
 
@@ -271,8 +271,8 @@ function setupEventListeners() {
                 // Show success message
                 Swal.fire({
                     icon: 'success',
-                    title: 'Thành công!',
-                    text: 'Dữ liệu đã được cập nhật từ WandB.',
+                    title: 'Success!',
+                    text: 'Data has been updated from WandB.',
                     timer: 2000,
                     showConfirmButton: false
                 });
@@ -284,7 +284,7 @@ function setupEventListeners() {
                 loadStudentSuccessRateChart();
             } else {
                 // Show error message
-                showErrorAlert(data.message || 'Không thể cập nhật dữ liệu');
+                showErrorAlert(data.message || 'Unable to update data');
             }
         })
         .catch(error => {
@@ -292,7 +292,7 @@ function setupEventListeners() {
             document.getElementById('loadingOverlay').classList.add('d-none');
             
             console.error('Error refreshing data:', error);
-            showErrorAlert('Không thể kết nối với API để cập nhật dữ liệu');
+            showErrorAlert('Unable to connect to API to update data');
         });
     });
 }
@@ -304,8 +304,8 @@ function setupEventListeners() {
 function showErrorAlert(message) {
     Swal.fire({
         icon: 'error',
-        title: 'Lỗi!',
+        title: 'Error!',
         text: message,
-        confirmButtonText: 'Đóng'
+        confirmButtonText: 'Close'
     });
-} 
+}

@@ -107,7 +107,7 @@ Attendence_Checking_by_Facial_Recognition/  # Main project folder
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/yourproject.git
+git clone https://github.com/qviuqh/Attendence_Checking_by_Facial_Recognition
 cd yourproject
 ```
 

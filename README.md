@@ -173,9 +173,6 @@ This section explains the user flow and interactions with the desktop attendance
 
 
 ## ⚙️ CI/CD Pipeline
-
-_Describe your automation here:_
-
 This project uses **GitHub Actions** to: automatically retrain a machine learning model whenever new video data is uploaded. The process includes preprocessing video data, generating embeddings, and uploading both embeddings and the updated model to Weights & Biases (WandB).
 
 Key Features:

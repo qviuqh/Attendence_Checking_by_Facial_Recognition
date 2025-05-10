@@ -33,17 +33,10 @@ The main objective of this project is to automate the attendance process, saving
 
 ## 🏗️ Architecture
 
-_Add your architecture diagram below:_
+---
+### User Flow 
 
-![System Architecture](path/to/your/architecture_diagram.png)
-
-**Components Overview:**
-- Face capture and preprocessing
-- Embedding generation (e.g., FaceNet)
-- Classifier for student ID prediction
-- FastAPI server with endpoints
-- Weights & Biases for model tracking
-- CI/CD pipeline (GitHub Actions, etc.)
+![System Architecture](Readme_images/UF.drawio.png)
 
 ---
 

@@ -22,13 +22,12 @@ jobs:
       - name: Install dependencies for API test
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi pydantic httpx pytest pytest-asyncio python-multipart pandas joblib wandb
+          pip install fastapi pydantic pytest python-multipart pandas joblib wandb
+
+      - name: Login to wandb
+        run: wandb login ${{ secrets.WANDB_API_KEY }}
+        shell: pwsh
       
-      - name: Login in wandb
-        run: 
-          wandb login ${{ secrets.WANDB_API_KEY }}
- 
       - name: Run only api_test.py
-        run: |
-          pytest api_test.py -v
+        run: pytest api_test.py -v
         shell: pwsh

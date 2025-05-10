@@ -224,7 +224,6 @@ This section explains how the app work and interactions with the desktop attenda
 ![Startup Interface](Readme_images/Ui1.png)
 ![Attendance List View](Readme_images/Ui2.png)
 ![Take Attendance](Readme_images/Ui3.png)
-![Retry Input](Readme_images/Ui4.png)
 
 
 

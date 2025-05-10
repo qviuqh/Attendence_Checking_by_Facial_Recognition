@@ -12,7 +12,7 @@
   - [2. Create and activate virtual environment](#2-create-and-activate-virtual-environment)
   - [3. Install dependencies](#3-install-dependencies)
   - [4. Configure Weights & Biases](#4-configure-weights--biases)
-- [🖼️ Example UI or Output](#-example-ui-or-output)
+- [🖼️ Instructions](#-instructions)
 - [⚙️ CI/CD Pipeline](#-cicd-pipeline)
 - [🧭 Next Steps](#-next-steps)
 
@@ -120,11 +120,11 @@ WANDB_API_KEY=your_wandb_key_here
 
 ---
 
-## 🖼️ Example UI or Output
+## 🖼️ Instructions
 
 ### 🧑‍💻 How to Use the Application
 
-This section explains the user flow and interactions with the desktop attendance app:
+This section explains how the app work and interactions with the desktop attendance app:
 
 1. **Startup Interface**:
    - When the application launches, it shows **3 buttons**:

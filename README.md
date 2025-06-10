@@ -1,5 +1,3 @@
-### Welcome to my project
-
 # 📸 Attendance Checking with Facial Recognition - MLOps Project
 
 ## 📚 Contents
